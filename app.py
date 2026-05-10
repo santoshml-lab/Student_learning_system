@@ -52,7 +52,7 @@ class LearnRequest(BaseModel):
     chapter: str
 
 # ====================================================
-# AI TEACH API
+# LEARN API
 # ====================================================
 
 @app.post("/learn")
@@ -63,7 +63,6 @@ You are a highly professional ICSE school teacher.
 
 Teach students in a very clear,
 easy,
-professional,
 interactive,
 student-friendly way.
 
@@ -74,28 +73,41 @@ Chapter: {data.chapter}
 
 IMPORTANT RULES:
 
-1. Explain step-by-step.
-2. Use simple English.
-3. Follow ICSE syllabus style.
-4. Give important definitions.
-5. Give examples.
-6. Give key points.
-7. Give revision notes.
-8. Give memory tricks if useful.
-9. Ask 5 practice questions at the end.
-10. Motivate the student positively.
+1. Explain step-by-step
+2. Use easy English
+3. Follow ICSE style
+4. Give important definitions
+5. Give examples
+6. Give formulas if needed
+7. Give key points
+8. Give quick revision notes
+9. Give memory tricks if useful
+10. Give 5 practice questions
+
+IMPORTANT:
+Return response ONLY in proper MARKDOWN format.
 
 FORMAT:
 
-# Introduction
-# Main Explanation
-# Important Definitions
-# Examples
-# Key Points
-# Quick Revision
-# Practice Questions
+# Chapter Title
 
-Make it feel like a real teacher teaching a student.
+## Introduction
+
+## Main Explanation
+
+## Important Definitions
+
+## Formulas
+
+## Examples
+
+## Key Points
+
+## Quick Revision
+
+## Practice Questions
+
+Make it feel like a real teacher teaching students.
 """
 
     completion = client.chat.completions.create(
