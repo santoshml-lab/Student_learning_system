@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
 import os
-import sqlite3
+import psycopg2
 
 # ====================================================
 # APP
@@ -33,22 +33,34 @@ client = Groq(
 )
 
 # ====================================================
-# DATABASE (CHAPTER SAVE SYSTEM)
+# DB CONNECTION
 # ====================================================
 
-conn = sqlite3.connect("edtech.db", check_same_thread=False)
-cursor = conn.cursor()
+def get_conn():
+    return psycopg2.connect(os.getenv("DATABASE_URL"))
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS chapters (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    student_class TEXT,
-    subject TEXT,
-    chapter TEXT
-)
-""")
+# ====================================================
+# INIT TABLE (SAFE)
+# ====================================================
 
-conn.commit()
+def init_db():
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS chapters (
+        id SERIAL PRIMARY KEY,
+        student_class TEXT,
+        subject TEXT,
+        chapter TEXT
+    );
+    """)
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+init_db()
 
 # ====================================================
 # ROOT
@@ -56,23 +68,19 @@ conn.commit()
 
 @app.get("/")
 def home():
-
-    return {
-        "status": "ICSE AI Teacher Running 🚀"
-    }
+    return {"status": "ICSE AI Teacher Running 🚀"}
 
 # ====================================================
 # REQUEST MODEL
 # ====================================================
 
 class LearnRequest(BaseModel):
-
     student_class: str
     subject: str
     chapter: str
 
 # ====================================================
-# LEARN API (AI TEACHER)
+# LEARN API (AI + SAVE)
 # ====================================================
 
 @app.post("/learn")
@@ -81,72 +89,39 @@ def learn(data: LearnRequest):
     prompt = f"""
 You are a highly professional ICSE school teacher.
 
-Teach students in a very clear,
-easy,
-interactive,
-student-friendly way.
-
-Student Details:
+Teach:
 Class: {data.student_class}
 Subject: {data.subject}
 Chapter: {data.chapter}
 
-IMPORTANT RULES:
-
-1. Explain step-by-step
-2. Use easy English
-3. Follow ICSE style
-4. Give important definitions
-5. Give examples
-6. Give formulas if needed
-7. Give key points
-8. Give quick revision notes
-9. Give memory tricks if useful
-10. Give 5 practice questions
-
-IMPORTANT:
-Return ONLY in MARKDOWN format.
-
-FORMAT:
-
-# Chapter Title
-
-## Introduction
-
-## Main Explanation
-
-## Important Definitions
-
-## Formulas
-
-## Examples
-
-## Key Points
-
-## Quick Revision
-
-## Practice Questions
+Return ONLY MARKDOWN:
+- Explanation
+- Examples
+- Formulas
+- 5 Practice Questions
 """
 
     completion = client.chat.completions.create(
-
         model="llama-3.1-8b-instant",
-
-        messages=[
-
-            {
-                "role": "system",
-                "content": prompt
-            }
-
-        ]
-
+        messages=[{"role": "system", "content": prompt}]
     )
 
     lesson = completion.choices[0].message.content
 
-    return {
+    # SAVE TO DB
+    conn = get_conn()
+    cur = conn.cursor()
 
+    cur.execute("""
+        INSERT INTO chapters (student_class, subject, chapter)
+        VALUES (%s, %s, %s)
+    """, (data.student_class, data.subject, data.chapter))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {
         "class": data.student_class,
         "subject": data.subject,
         "chapter": data.chapter,
@@ -154,47 +129,27 @@ FORMAT:
     }
 
 # ====================================================
-# SAVE CHAPTER API
-# ====================================================
-
-@app.post("/save-chapter")
-def save_chapter(data: LearnRequest):
-
-    cursor.execute("""
-        INSERT INTO chapters (student_class, subject, chapter)
-        VALUES (?, ?, ?)
-    """, (
-        data.student_class,
-        data.subject,
-        data.chapter
-    ))
-
-    conn.commit()
-
-    return {
-        "msg": "chapter saved successfully"
-    }
-
-# ====================================================
-# GET SAVED CHAPTERS
+# GET CHAPTERS
 # ====================================================
 
 @app.get("/chapters")
 def get_chapters():
 
-    cursor.execute("""
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
         SELECT student_class, subject, chapter FROM chapters
     """)
 
-    rows = cursor.fetchall()
+    rows = cur.fetchall()
+
+    cur.close()
+    conn.close()
 
     return {
         "chapters": [
-            {
-                "class": r[0],
-                "subject": r[1],
-                "chapter": r[2]
-            }
+            {"class": r[0], "subject": r[1], "chapter": r[2]}
             for r in rows
         ]
     }
