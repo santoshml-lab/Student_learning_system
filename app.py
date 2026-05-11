@@ -23,7 +23,9 @@ app.add_middleware(
 # GROQ
 # =========================
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+client = Groq(
+    api_key=os.getenv("GROQ_API_KEY")
+)
 
 # =========================
 # DATABASE
@@ -32,10 +34,21 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgres://",
+        "postgresql://",
+        1
+    )
 
 def get_conn():
-    return psycopg2.connect(DATABASE_URL, sslmode="require")
+
+    if not DATABASE_URL:
+        raise Exception("DATABASE_URL missing")
+
+    return psycopg2.connect(
+        DATABASE_URL,
+        sslmode="require"
+    )
 
 # =========================
 # INIT DB
@@ -43,24 +56,39 @@ def get_conn():
 
 def init_db():
 
-    conn = get_conn()
-    cur = conn.cursor()
+    try:
 
-    # chapters
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS chapters (
-        id SERIAL PRIMARY KEY,
-        student_name TEXT,
-        student_class TEXT,
-        subject TEXT,
-        chapter TEXT,
-        xp INTEGER DEFAULT 10
-    )
-    """)
+        conn = get_conn()
+        cur = conn.cursor()
 
-    conn.commit()
-    cur.close()
-    conn.close()
+        # SAFE RESET
+        cur.execute("""
+
+        DROP TABLE IF EXISTS chapters;
+
+        CREATE TABLE chapters (
+
+            id SERIAL PRIMARY KEY,
+            student_name TEXT,
+            student_class TEXT,
+            subject TEXT,
+            chapter TEXT,
+            xp INTEGER DEFAULT 10
+
+        )
+
+        """)
+
+        conn.commit()
+
+        cur.close()
+        conn.close()
+
+        print("DB initialized ✅")
+
+    except Exception as e:
+
+        print("DB ERROR:", e)
 
 init_db()
 
@@ -69,6 +97,7 @@ init_db()
 # =========================
 
 class LearnRequest(BaseModel):
+
     student_name: str
     student_class: str
     subject: str
@@ -80,7 +109,10 @@ class LearnRequest(BaseModel):
 
 @app.get("/")
 def home():
-    return {"status":"LEVEL 4 Backend Running 🚀"}
+
+    return {
+        "status":"LEVEL 4 Backend Running 🚀"
+    }
 
 # =========================
 # LEARN
@@ -90,31 +122,43 @@ def home():
 def learn(data: LearnRequest):
 
     prompt = f"""
+
 You are an ICSE teacher.
 
 Class: {data.student_class}
 Subject: {data.subject}
 Chapter: {data.chapter}
 
-Explain with:
+Explain clearly with:
+
 - Introduction
 - Explanation
 - Definitions
 - Examples
 - Key Points
 - Revision Notes
-- Practice Questions
+- 5 Practice Questions
+
 """
 
     completion = client.chat.completions.create(
+
         model="llama-3.1-8b-instant",
+
         messages=[
-            {"role":"system","content":prompt}
+            {
+                "role":"system",
+                "content":prompt
+            }
         ]
+
     )
 
     return {
-        "lesson": completion.choices[0].message.content
+
+        "lesson":
+        completion.choices[0].message.content
+
     }
 
 # =========================
@@ -128,21 +172,29 @@ def save_chapter(data: LearnRequest):
     cur = conn.cursor()
 
     cur.execute("""
+
     INSERT INTO chapters
     (student_name, student_class, subject, chapter)
+
     VALUES (%s,%s,%s,%s)
+
     """, (
+
         data.student_name,
         data.student_class,
         data.subject,
         data.chapter
+
     ))
 
     conn.commit()
+
     cur.close()
     conn.close()
 
-    return {"message":"saved 🚀"}
+    return {
+        "message":"saved 🚀"
+    }
 
 # =========================
 # GET CHAPTERS
@@ -155,10 +207,17 @@ def get_chapters():
     cur = conn.cursor()
 
     cur.execute("""
-    SELECT student_name, subject, chapter
+
+    SELECT
+    student_name,
+    subject,
+    chapter
+
     FROM chapters
+
     ORDER BY id DESC
     LIMIT 20
+
     """)
 
     rows = cur.fetchall()
@@ -167,14 +226,18 @@ def get_chapters():
     conn.close()
 
     return {
+
         "chapters":[
+
             {
                 "student":r[0],
                 "subject":r[1],
                 "chapter":r[2]
             }
+
             for r in rows
         ]
+
     }
 
 # =========================
@@ -188,11 +251,19 @@ def leaderboard():
     cur = conn.cursor()
 
     cur.execute("""
-    SELECT student_name, SUM(xp) as total_xp
+
+    SELECT
+    student_name,
+    SUM(xp) as total_xp
+
     FROM chapters
+
     GROUP BY student_name
+
     ORDER BY total_xp DESC
+
     LIMIT 10
+
     """)
 
     rows = cur.fetchall()
@@ -201,13 +272,17 @@ def leaderboard():
     conn.close()
 
     return {
+
         "leaderboard":[
+
             {
                 "name":r[0],
                 "xp":r[1]
             }
+
             for r in rows
         ]
+
     }
 
 # =========================
@@ -221,10 +296,17 @@ def quick_access():
     cur = conn.cursor()
 
     cur.execute("""
-    SELECT DISTINCT subject, chapter
+
+    SELECT DISTINCT
+    subject,
+    chapter
+
     FROM chapters
-    ORDER BY subject
+
+    ORDER BY id DESC
+
     LIMIT 10
+
     """)
 
     rows = cur.fetchall()
@@ -233,12 +315,27 @@ def quick_access():
     conn.close()
 
     return {
+
         "quick_access":[
+
             {
                 "subject":r[0],
                 "chapter":r[1]
             }
+
             for r in rows
         ]
+
+    }
+
+# =========================
+# HEALTH CHECK
+# =========================
+
+@app.get("/health")
+def health():
+
+    return {
+        "status":"healthy ✅"
     }
 
