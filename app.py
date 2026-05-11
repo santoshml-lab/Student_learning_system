@@ -297,13 +297,11 @@ def quick_access():
 
     cur.execute("""
 
-    SELECT DISTINCT
+    SELECT
     subject,
     chapter
 
     FROM chapters
-
-    ORDER BY id DESC
 
     LIMIT 10
 
@@ -319,14 +317,17 @@ def quick_access():
         "quick_access":[
 
             {
-                "subject":r[0],
-                "chapter":r[1]
+                "subject": r[0],
+                "chapter": r[1]
             }
 
             for r in rows
         ]
 
     }
+           
+                          
+               
 
 # =========================
 # HEALTH CHECK
