@@ -6,14 +6,10 @@ import os
 import psycopg2
 
 # =========================
-# APP INIT
+# APP
 # =========================
 
 app = FastAPI()
-
-# =========================
-# CORS
-# =========================
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,49 +20,57 @@ app.add_middleware(
 )
 
 # =========================
-# GROQ CLIENT
+# GROQ
 # =========================
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # =========================
-# DATABASE SETUP (RENDER SAFE)
+# DB CONFIG (RENDER SAFE)
 # =========================
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# fix postgres:// issue
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 def get_conn():
-    return psycopg2.connect(
-        DATABASE_URL,
-        sslmode="require"
-    )
+    if not DATABASE_URL:
+        raise Exception("DATABASE_URL not set in environment")
+    return psycopg2.connect(DATABASE_URL, sslmode="require")
+
+# =========================
+# SAFE INIT (IMPORTANT FIX)
+# =========================
 
 def init_db():
-    conn = get_conn()
-    cur = conn.cursor()
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS chapters (
-        id SERIAL PRIMARY KEY,
-        student_class TEXT,
-        subject TEXT,
-        chapter TEXT
-    )
-    """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS chapters (
+                id SERIAL PRIMARY KEY,
+                student_class TEXT,
+                subject TEXT,
+                chapter TEXT
+            )
+        """)
 
-    conn.commit()
-    cur.close()
-    conn.close()
+        conn.commit()
+        cur.close()
+        conn.close()
 
-# run once
+        print("DB initialized ✅")
+
+    except Exception as e:
+        print("DB init error:", e)
+
+# run safely
 init_db()
 
 # =========================
-# MODELS
+# MODEL
 # =========================
 
 class LearnRequest(BaseModel):
@@ -75,32 +79,28 @@ class LearnRequest(BaseModel):
     chapter: str
 
 # =========================
-# ROOT CHECK
+# ROOT
 # =========================
 
 @app.get("/")
 def home():
-    return {
-        "status": "AI Learning System Running 🚀"
-    }
+    return {"status": "AI Learning System Running 🚀"}
 
 # =========================
-# AI LEARNING API
+# AI API
 # =========================
 
 @app.post("/learn")
 def learn(data: LearnRequest):
 
     prompt = f"""
-You are a professional ICSE teacher.
-
-Teach in simple, clear, structured way.
+You are an ICSE expert teacher.
 
 Class: {data.student_class}
 Subject: {data.subject}
 Chapter: {data.chapter}
 
-Return ONLY Markdown format with:
+Explain clearly with structure:
 - Introduction
 - Explanation
 - Definitions
@@ -112,19 +112,13 @@ Return ONLY Markdown format with:
 
     completion = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[
-            {"role": "system", "content": prompt}
-        ]
+        messages=[{"role": "system", "content": prompt}]
     )
 
-    lesson = completion.choices[0].message.content
-
-    return {
-        "lesson": lesson
-    }
+    return {"lesson": completion.choices[0].message.content}
 
 # =========================
-# SAVE CHAPTER
+# SAVE
 # =========================
 
 @app.post("/save-chapter")
@@ -136,22 +130,16 @@ def save_chapter(data: LearnRequest):
     cur.execute("""
         INSERT INTO chapters (student_class, subject, chapter)
         VALUES (%s, %s, %s)
-    """, (
-        data.student_class,
-        data.subject,
-        data.chapter
-    ))
+    """, (data.student_class, data.subject, data.chapter))
 
     conn.commit()
     cur.close()
     conn.close()
 
-    return {
-        "message": "Chapter saved successfully 🚀"
-    }
+    return {"message": "Chapter saved successfully 🚀"}
 
 # =========================
-# GET CHAPTERS
+# GET
 # =========================
 
 @app.get("/chapters")
@@ -160,10 +148,7 @@ def get_chapters():
     conn = get_conn()
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT student_class, subject, chapter FROM chapters
-    """)
-
+    cur.execute("SELECT student_class, subject, chapter FROM chapters")
     rows = cur.fetchall()
 
     cur.close()
@@ -171,11 +156,7 @@ def get_chapters():
 
     return {
         "chapters": [
-            {
-                "class": r[0],
-                "subject": r[1],
-                "chapter": r[2]
-            }
+            {"class": r[0], "subject": r[1], "chapter": r[2]}
             for r in rows
         ]
     }
