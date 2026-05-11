@@ -1,330 +1,163 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from groq import Groq
+import os
+import psycopg2
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>AI Learning System 🚀 LEVEL 4</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+# =========================
+# APP
+# =========================
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+app = FastAPI()
 
-<style>
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-*{margin:0;padding:0;box-sizing:border-box;font-family:Poppins;}
+# =========================
+# GROQ
+# =========================
 
-body{
-    background:#0f172a;
-    color:white;
-}
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-/* HEADER */
-header{
-    text-align:center;
-    padding:18px;
-    background:rgba(255,255,255,0.05);
-    border-bottom:1px solid rgba(255,255,255,0.1);
-}
+# =========================
+# DB CONFIG (RENDER SAFE)
+# =========================
 
-header h1{color:#38bdf8}
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-/* GRID */
-.container{
-    display:grid;
-    grid-template-columns:320px 1fr;
-    gap:20px;
-    padding:20px;
-}
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-/* CARD */
-.card{
-    background:rgba(255,255,255,0.05);
-    border:1px solid rgba(255,255,255,0.1);
-    padding:18px;
-    border-radius:18px;
-}
+def get_conn():
+    if not DATABASE_URL:
+        raise Exception("DATABASE_URL not set in environment")
+    return psycopg2.connect(DATABASE_URL, sslmode="require")
 
-/* INPUT */
-input{
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-    border-radius:10px;
-    border:none;
-    background:#1e293b;
-    color:white;
-}
+# =========================
+# SAFE INIT (IMPORTANT FIX)
+# =========================
 
-/* BUTTON */
-button{
-    width:100%;
-    margin-top:12px;
-    padding:12px;
-    border:none;
-    border-radius:10px;
-    background:#38bdf8;
-    font-weight:bold;
-    cursor:pointer;
-}
+def init_db():
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
 
-button:hover{background:#0ea5e9}
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS chapters (
+                id SERIAL PRIMARY KEY,
+                student_class TEXT,
+                subject TEXT,
+                chapter TEXT
+            )
+        """)
 
-/* LESSON */
-.lesson{
-    line-height:1.8;
-    font-size:15px;
-}
+        conn.commit()
+        cur.close()
+        conn.close()
 
-.lesson h1,.lesson h2{color:#38bdf8}
+        print("DB initialized ✅")
 
-/* ITEMS */
-.item{
-    margin-top:8px;
-    padding:10px;
-    border-radius:10px;
-    background:#111827;
-}
+    except Exception as e:
+        print("DB init error:", e)
 
-/* LOADER */
-.loader{
-    display:none;
-    color:#38bdf8;
-}
+# run safely
+init_db()
 
-/* MOBILE */
-@media(max-width:900px){
-    .container{grid-template-columns:1fr;}
-}
+# =========================
+# MODEL
+# =========================
 
-</style>
-</head>
+class LearnRequest(BaseModel):
+    student_class: str
+    subject: str
+    chapter: str
 
-<body>
+# =========================
+# ROOT
+# =========================
 
-<header>
-<h1>🚀 AI Learning System (LEVEL 4 PRO)</h1>
-</header>
+@app.get("/")
+def home():
+    return {"status": "AI Learning System Running 🚀"}
 
-<div class="container">
+# =========================
+# AI API
+# =========================
 
-<!-- LEFT PANEL -->
-<div class="card">
+@app.post("/learn")
+def learn(data: LearnRequest):
 
-<h3>👤 Student Panel</h3>
+    prompt = f"""
+You are an ICSE expert teacher.
 
-<input id="cls" placeholder="Class">
-<input id="sub" placeholder="Subject">
-<input id="chap" placeholder="Chapter">
+Class: {data.student_class}
+Subject: {data.subject}
+Chapter: {data.chapter}
 
-<button onclick="learn()">Start AI Learning</button>
+Explain clearly with structure:
+- Introduction
+- Explanation
+- Definitions
+- Examples
+- Key Points
+- Revision Notes
+- 5 Practice Questions
+"""
 
-<hr style="margin:15px 0;opacity:0.2">
+    completion = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "system", "content": prompt}]
+    )
 
-<h3>📌 Saved Chapters</h3>
-<div id="saved">Loading...</div>
+    return {"lesson": completion.choices[0].message.content}
 
-<hr style="margin:15px 0;opacity:0.2">
+# =========================
+# SAVE
+# =========================
 
-<h3>🏆 Leaderboard</h3>
-<div id="board">Loading...</div>
+@app.post("/save-chapter")
+def save_chapter(data: LearnRequest):
 
-</div>
+    conn = get_conn()
+    cur = conn.cursor()
 
-<!-- RIGHT PANEL -->
-<div class="card">
+    cur.execute("""
+        INSERT INTO chapters (student_class, subject, chapter)
+        VALUES (%s, %s, %s)
+    """, (data.student_class, data.subject, data.chapter))
 
-<h3>🤖 AI Teacher</h3>
+    conn.commit()
+    cur.close()
+    conn.close()
 
-<div class="loader" id="loader">AI is thinking...</div>
+    return {"message": "Chapter saved successfully 🚀"}
 
-<div class="lesson" id="lesson">
-Start learning 🚀
-</div>
+# =========================
+# GET
+# =========================
 
-</div>
+@app.get("/chapters")
+def get_chapters():
 
-</div>
+    conn = get_conn()
+    cur = conn.cursor()
 
-<script>
+    cur.execute("SELECT student_class, subject, chapter FROM chapters")
+    rows = cur.fetchall()
 
-const API = "https://student-learning-system-r6bi.onrender.com";
+    cur.close()
+    conn.close()
 
-/* =========================
-   USER SYSTEM (LEVEL 4 CORE)
-========================= */
-
-let user = JSON.parse(localStorage.getItem("user"));
-
-if(!user){
-    user = {
-        id: "U_" + Math.floor(Math.random()*999999),
-        xp: 0,
-        streak: 1,
-        history: []
-    };
-    localStorage.setItem("user", JSON.stringify(user));
-}
-
-/* =========================
-   STATE
-========================= */
-
-let saved = [];
-
-/* =========================
-   LOAD CHAPTERS
-========================= */
-
-async function loadChapters(){
-    let res = await fetch(`${API}/chapters`);
-    let data = await res.json();
-
-    saved = data.chapters || [];
-    renderSaved();
-}
-
-/* =========================
-   RENDER SAVED
-========================= */
-
-function renderSaved(){
-
-    let box = document.getElementById("saved");
-
-    if(saved.length === 0){
-        box.innerHTML = "No saved chapters 🚀";
-        return;
+    return {
+        "chapters": [
+            {"class": r[0], "subject": r[1], "chapter": r[2]}
+            for r in rows
+        ]
     }
 
-    box.innerHTML = "";
-
-    saved.forEach(c=>{
-        box.innerHTML += `
-        <div class="item">
-            📘 ${c.subject}<br>
-            📖 ${c.chapter}
-        </div>
-        `;
-    });
-}
-
-/* =========================
-   LEADERBOARD (FRONTEND MOCK / DB READY)
-========================= */
-
-async function loadBoard(){
-
-    // backend-ready endpoint (future)
-    try{
-        let res = await fetch(`${API}/leaderboard`);
-        let data = await res.json();
-
-        renderBoard(data.leaderboard || []);
-    }
-    catch(e){
-
-        // fallback demo leaderboard
-        renderBoard([
-            {name:"Aman", xp:120},
-            {name:"Ruchi", xp:110},
-            {name:"Santosh", xp:95}
-        ]);
-    }
-}
-
-function renderBoard(list){
-
-    let box = document.getElementById("board");
-    box.innerHTML = "";
-
-    list.sort((a,b)=>b.xp-a.xp);
-
-    list.forEach((u,i)=>{
-        box.innerHTML += `
-        <div class="item">
-            ${i+1}. ${u.name || "User"} — ${u.xp} XP
-        </div>
-        `;
-    });
-}
-
-/* =========================
-   UPDATE USER XP
-========================= */
-
-function updateXP(){
-    user.xp += 15;
-    user.history.unshift({
-        subject: document.getElementById("sub").value,
-        chapter: document.getElementById("chap").value
-    });
-
-    localStorage.setItem("user", JSON.stringify(user));
-}
-
-/* =========================
-   LEARN FUNCTION (CORE ENGINE)
-========================= */
-
-async function learn(){
-
-    let cls = document.getElementById("cls").value;
-    let sub = document.getElementById("sub").value;
-    let chap = document.getElementById("chap").value;
-
-    if(!cls || !sub || !chap){
-        alert("Fill all fields");
-        return;
-    }
-
-    document.getElementById("loader").style.display="block";
-
-    try{
-
-        let res = await fetch(`${API}/learn`,{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({
-                student_class:cls,
-                subject:sub,
-                chapter:chap
-            })
-        });
-
-        let data = await res.json();
-
-        document.getElementById("lesson").innerHTML =
-            marked.parse(data.lesson || "No lesson");
-
-        await fetch(`${API}/save-chapter`,{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({
-                student_class:cls,
-                subject:sub,
-                chapter:chap
-            })
-        });
-
-        saved.unshift({subject:sub, chapter:chap});
-        renderSaved();
-
-        updateXP();
-        loadBoard();
-
-    }catch(err){
-        console.log(err);
-        alert("Error occurred");
-    }
-
-    document.getElementById("loader").style.display="none";
-}
-
-/* INIT */
-loadChapters();
-loadBoard();
-
-</script>
-
-</body>
-</html>
