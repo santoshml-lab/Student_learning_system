@@ -61,12 +61,9 @@ def init_db():
         conn = get_conn()
         cur = conn.cursor()
 
-        # SAFE RESET
         cur.execute("""
 
-        DROP TABLE IF EXISTS chapters;
-
-        CREATE TABLE chapters (
+        CREATE TABLE IF NOT EXISTS chapters (
 
             id SERIAL PRIMARY KEY,
             student_name TEXT,
@@ -93,7 +90,7 @@ def init_db():
 init_db()
 
 # =========================
-# MODEL
+# MODELS
 # =========================
 
 class LearnRequest(BaseModel):
@@ -103,6 +100,11 @@ class LearnRequest(BaseModel):
     subject: str
     chapter: str
 
+
+class ChatInput(BaseModel):
+
+    message: str
+
 # =========================
 # ROOT
 # =========================
@@ -111,11 +113,22 @@ class LearnRequest(BaseModel):
 def home():
 
     return {
-        "status":"LEVEL 4 Backend Running 🚀"
+        "status":"LEVEL 5 AI EDTECH RUNNING 🚀"
     }
 
 # =========================
-# LEARN
+# HEALTH CHECK
+# =========================
+
+@app.get("/health")
+def health():
+
+    return {
+        "status":"healthy ✅"
+    }
+
+# =========================
+# AI LEARNING
 # =========================
 
 @app.post("/learn")
@@ -160,6 +173,63 @@ Explain clearly with:
         completion.choices[0].message.content
 
     }
+
+# =========================
+# EXAMPANIC AI CHATBOT
+# =========================
+
+@app.post("/chat")
+def chat(data: ChatInput):
+
+    try:
+
+        response = client.chat.completions.create(
+
+            model="llama-3.1-8b-instant",
+
+            messages=[
+
+                {
+                    "role":"system",
+                    "content":"""
+
+You are ExamPanic AI.
+
+You help students with:
+
+- exam preparation
+- doubts
+- revision
+- motivation
+- study planning
+- simple explanations
+
+Always answer clearly and simply like a friendly teacher.
+
+"""
+                },
+
+                {
+                    "role":"user",
+                    "content":data.message
+                }
+
+            ]
+
+        )
+
+        return {
+
+            "reply":
+            response.choices[0].message.content
+
+        }
+
+    except Exception as e:
+
+        return {
+            "error":str(e)
+        }
 
 # =========================
 # SAVE CHAPTER
@@ -324,19 +394,5 @@ def quick_access():
             for r in rows
         ]
 
-    }
-           
-                          
-               
-
-# =========================
-# HEALTH CHECK
-# =========================
-
-@app.get("/health")
-def health():
-
-    return {
-        "status":"healthy ✅"
     }
 
