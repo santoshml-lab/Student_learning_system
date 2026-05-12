@@ -8,11 +8,11 @@ import psycopg2
 
 app = FastAPI()
 
-=========================
 
-CORS
 
-=========================
+
+
+
 
 app.add_middleware(
 CORSMiddleware,
@@ -22,19 +22,18 @@ allow_methods=[""],
 allow_headers=["*"],
 )
 
-=========================
 
-GROQ
 
-=========================
+
+
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-=========================
 
-DATABASE
 
-=========================
+
+
+
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -46,11 +45,11 @@ if not DATABASE_URL:
 raise Exception("DATABASE_URL missing")
 return psycopg2.connect(DATABASE_URL, sslmode="require")
 
-=========================
 
-INIT DB
 
-=========================
+
+
+
 
 def init_db():
 try:
@@ -78,11 +77,11 @@ except Exception as e:
 
 init_db()
 
-=========================
 
-MODELS
 
-=========================
+
+
+
 
 class LearnRequest(BaseModel):
 student_name: str
@@ -93,31 +92,31 @@ chapter: str
 class ChatInput(BaseModel):
 message: str
 
-=========================
 
-ROOT
 
-=========================
+
+
+
 
 @app.get("/")
 def home():
 return {"status": "LEVEL 6 AI EDTECH RUNNING 🚀"}
 
-=========================
 
-HEALTH CHECK
 
-=========================
+
+
+
 
 @app.get("/health")
 def health():
 return {"status": "healthy ✅"}
 
-=========================
 
-AI LEARNING (DETAILED TEACHER MODE)
 
-=========================
+
+
+
 
 @app.post("/learn")
 def learn(data: LearnRequest):
@@ -177,7 +176,7 @@ RULES:
 
 CHATBOT (EXAMPANIC AI)
 
-=========================
+
 
 @app.post("/chat")
 def chat(data: ChatInput):
@@ -227,11 +226,11 @@ RULES:
   except Exception as e:
   return {"error": str(e)}
 
-=========================
 
-SAVE CHAPTER
 
-=========================
+
+
+
 
 @app.post("/save-chapter")
 def save_chapter(data: LearnRequest):
@@ -255,11 +254,9 @@ conn.close()
 
 return {"message": "saved 🚀"}
 
-=========================
 
-GET CHAPTERS
 
-=========================
+
 
 @app.get("/chapters")
 def get_chapters():
@@ -290,11 +287,11 @@ return {
     ]
 }
 
-=========================
 
-LEADERBOARD
 
-=========================
+
+
+
 
 @app.get("/leaderboard")
 def leaderboard():
@@ -325,12 +322,12 @@ return {
     ]
 }
 
-=========================
 
-QUICK ACCESS
 
-=========================
 
+
+
+i
 @app.get("/quick-access")
 def quick_access():
 
