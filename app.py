@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -7,392 +8,352 @@ import psycopg2
 
 app = FastAPI()
 
-# =========================
-# CORS
-# =========================
+=========================
+
+CORS
+
+=========================
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+CORSMiddleware,
+allow_origins=[""],
+allow_credentials=True,
+allow_methods=[""],
+allow_headers=["*"],
 )
 
-# =========================
-# GROQ
-# =========================
+=========================
 
-client = Groq(
-    api_key=os.getenv("GROQ_API_KEY")
-)
+GROQ
 
-# =========================
-# DATABASE
-# =========================
+=========================
+
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+=========================
+
+DATABASE
+
+=========================
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace(
-        "postgres://",
-        "postgresql://",
-        1
-    )
+DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 def get_conn():
+if not DATABASE_URL:
+raise Exception("DATABASE_URL missing")
+return psycopg2.connect(DATABASE_URL, sslmode="require")
 
-    if not DATABASE_URL:
-        raise Exception("DATABASE_URL missing")
+=========================
 
-    return psycopg2.connect(
-        DATABASE_URL,
-        sslmode="require"
-    )
+INIT DB
 
-# =========================
-# INIT DB
-# =========================
+=========================
 
 def init_db():
+try:
+conn = get_conn()
+cur = conn.cursor()
 
-    try:
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS chapters (
+        id SERIAL PRIMARY KEY,
+        student_name TEXT,
+        student_class TEXT,
+        subject TEXT,
+        chapter TEXT,
+        xp INTEGER DEFAULT 10
+    )
+    """)
 
-        conn = get_conn()
-        cur = conn.cursor()
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("DB initialized ✅")
 
-        cur.execute("""
-
-        CREATE TABLE IF NOT EXISTS chapters (
-
-            id SERIAL PRIMARY KEY,
-            student_name TEXT,
-            student_class TEXT,
-            subject TEXT,
-            chapter TEXT,
-            xp INTEGER DEFAULT 10
-
-        )
-
-        """)
-
-        conn.commit()
-
-        cur.close()
-        conn.close()
-
-        print("DB initialized ✅")
-
-    except Exception as e:
-
-        print("DB ERROR:", e)
+except Exception as e:
+    print("DB ERROR:", e)
 
 init_db()
 
-# =========================
-# MODELS
-# =========================
+=========================
+
+MODELS
+
+=========================
 
 class LearnRequest(BaseModel):
-
-    student_name: str
-    student_class: str
-    subject: str
-    chapter: str
-
+student_name: str
+student_class: str
+subject: str
+chapter: str
 
 class ChatInput(BaseModel):
+message: str
 
-    message: str
+=========================
 
-# =========================
-# ROOT
-# =========================
+ROOT
+
+=========================
 
 @app.get("/")
 def home():
+return {"status": "LEVEL 6 AI EDTECH RUNNING 🚀"}
 
-    return {
-        "status":"LEVEL 5 AI EDTECH RUNNING 🚀"
-    }
+=========================
 
-# =========================
-# HEALTH CHECK
-# =========================
+HEALTH CHECK
+
+=========================
 
 @app.get("/health")
 def health():
+return {"status": "healthy ✅"}
 
-    return {
-        "status":"healthy ✅"
-    }
+=========================
 
-# =========================
-# AI LEARNING
-# =========================
+AI LEARNING (DETAILED TEACHER MODE)
+
+=========================
 
 @app.post("/learn")
 def learn(data: LearnRequest):
 
+try:
     prompt = f"""
 
-You are an ICSE teacher.
+You are an expert ICSE teacher.
+
+Teach the chapter in a detailed classroom teaching style.
 
 Class: {data.student_class}
 Subject: {data.subject}
 Chapter: {data.chapter}
 
-Explain clearly with:
+RULES:
 
-- Introduction
-- Explanation
-- Definitions
-- Examples
-- Key Points
-- Revision Notes
-- 5 Practice Questions
+- Explain in very simple language
 
-"""
+- Teach step by step like a real teacher
 
+- Give detailed explanations
+
+- Add examples after every concept
+
+- Explain difficult words
+
+- Use headings and subheadings
+
+- Add real-life examples
+
+- Add important notes
+
+- Add revision section
+
+- Add 10 practice questions
+
+- Do NOT summarize too much
+
+- Teach deeply so weak students understand
+  """
+  
     completion = client.chat.completions.create(
+      model="llama-3.1-8b-instant",
+      messages=[{"role": "system", "content": prompt}],
+      max_tokens=2000
+  )
 
-        model="llama-3.1-8b-instant",
+  return {
+      "lesson": completion.choices[0].message.content
+  }
+  
+  except Exception as e:
+  return {"error": str(e)}
 
-        messages=[
-            {
-                "role":"system",
-                "content":prompt
-            }
-        ]
+=========================
 
-    )
+CHATBOT (EXAMPANIC AI)
 
-    return {
-
-        "lesson":
-        completion.choices[0].message.content
-
-    }
-
-# =========================
-# EXAMPANIC AI CHATBOT
-# =========================
+=========================
 
 @app.post("/chat")
 def chat(data: ChatInput):
 
-    try:
+try:
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {
+                "role": "system",
+                "content": """
 
-        response = client.chat.completions.create(
+You are ExamPanic AI, a friendly AI teacher.
 
-            model="llama-3.1-8b-instant",
+Help students with:
 
-            messages=[
-
-                {
-                    "role":"system",
-                    "content":"""
-
-You are ExamPanic AI.
-
-You help students with:
-
-- exam preparation
+- exams
 - doubts
 - revision
 - motivation
 - study planning
-- simple explanations
+- concept clarity
 
-Always answer clearly and simply like a friendly teacher.
+RULES:
 
-"""
-                },
+- Simple language
 
-                {
-                    "role":"user",
-                    "content":data.message
-                }
+- Step-by-step answers
 
-            ]
+- Friendly tone
 
-        )
+- Examples when needed
 
-        return {
+- No robotic answers
+  """
+  },
+  {
+  "role": "user",
+  "content": data.message
+  }
+  ],
+  max_tokens=1200
+  )
+  
+    return {"reply": response.choices[0].message.content}
+  
+  except Exception as e:
+  return {"error": str(e)}
 
-            "reply":
-            response.choices[0].message.content
+=========================
 
-        }
+SAVE CHAPTER
 
-    except Exception as e:
-
-        return {
-            "error":str(e)
-        }
-
-# =========================
-# SAVE CHAPTER
-# =========================
+=========================
 
 @app.post("/save-chapter")
 def save_chapter(data: LearnRequest):
 
-    conn = get_conn()
-    cur = conn.cursor()
+conn = get_conn()
+cur = conn.cursor()
 
-    cur.execute("""
+cur.execute("""
+INSERT INTO chapters (student_name, student_class, subject, chapter)
+VALUES (%s,%s,%s,%s)
+""", (
+    data.student_name,
+    data.student_class,
+    data.subject,
+    data.chapter
+))
 
-    INSERT INTO chapters
-    (student_name, student_class, subject, chapter)
+conn.commit()
+cur.close()
+conn.close()
 
-    VALUES (%s,%s,%s,%s)
+return {"message": "saved 🚀"}
 
-    """, (
+=========================
 
-        data.student_name,
-        data.student_class,
-        data.subject,
-        data.chapter
+GET CHAPTERS
 
-    ))
-
-    conn.commit()
-
-    cur.close()
-    conn.close()
-
-    return {
-        "message":"saved 🚀"
-    }
-
-# =========================
-# GET CHAPTERS
-# =========================
+=========================
 
 @app.get("/chapters")
 def get_chapters():
 
-    conn = get_conn()
-    cur = conn.cursor()
+conn = get_conn()
+cur = conn.cursor()
 
-    cur.execute("""
+cur.execute("""
+SELECT student_name, subject, chapter
+FROM chapters
+ORDER BY id DESC
+LIMIT 20
+""")
 
-    SELECT
-    student_name,
-    subject,
-    chapter
+rows = cur.fetchall()
 
-    FROM chapters
+cur.close()
+conn.close()
 
-    ORDER BY id DESC
-    LIMIT 20
+return {
+    "chapters": [
+        {
+            "student": r[0],
+            "subject": r[1],
+            "chapter": r[2]
+        }
+        for r in rows
+    ]
+}
 
-    """)
+=========================
 
-    rows = cur.fetchall()
+LEADERBOARD
 
-    cur.close()
-    conn.close()
-
-    return {
-
-        "chapters":[
-
-            {
-                "student":r[0],
-                "subject":r[1],
-                "chapter":r[2]
-            }
-
-            for r in rows
-        ]
-
-    }
-
-# =========================
-# LEADERBOARD
-# =========================
+=========================
 
 @app.get("/leaderboard")
 def leaderboard():
 
-    conn = get_conn()
-    cur = conn.cursor()
+conn = get_conn()
+cur = conn.cursor()
 
-    cur.execute("""
+cur.execute("""
+SELECT student_name, SUM(xp) as total_xp
+FROM chapters
+GROUP BY student_name
+ORDER BY total_xp DESC
+LIMIT 10
+""")
 
-    SELECT
-    student_name,
-    SUM(xp) as total_xp
+rows = cur.fetchall()
 
-    FROM chapters
+cur.close()
+conn.close()
 
-    GROUP BY student_name
+return {
+    "leaderboard": [
+        {
+            "name": r[0],
+            "xp": r[1]
+        }
+        for r in rows
+    ]
+}
 
-    ORDER BY total_xp DESC
+=========================
 
-    LIMIT 10
+QUICK ACCESS
 
-    """)
-
-    rows = cur.fetchall()
-
-    cur.close()
-    conn.close()
-
-    return {
-
-        "leaderboard":[
-
-            {
-                "name":r[0],
-                "xp":r[1]
-            }
-
-            for r in rows
-        ]
-
-    }
-
-# =========================
-# QUICK ACCESS
-# =========================
+=========================
 
 @app.get("/quick-access")
 def quick_access():
 
-    conn = get_conn()
-    cur = conn.cursor()
+conn = get_conn()
+cur = conn.cursor()
 
-    cur.execute("""
+cur.execute("""
+SELECT subject, chapter
+FROM chapters
+LIMIT 10
+""")
 
-    SELECT
-    subject,
-    chapter
+rows = cur.fetchall()
 
-    FROM chapters
+cur.close()
+conn.close()
 
-    LIMIT 10
-
-    """)
-
-    rows = cur.fetchall()
-
-    cur.close()
-    conn.close()
-
-    return {
-
-        "quick_access":[
-
-            {
-                "subject": r[0],
-                "chapter": r[1]
-            }
-
-            for r in rows
-        ]
-
-    }
-
+return {
+    "quick_access": [
+        {
+            "subject": r[0],
+            "chapter": r[1]
+        }
+        for r in rows
+    ]
+}
