@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -70,7 +69,7 @@ class ChatInput(BaseModel):
 
 @app.get("/")
 def home():
-    return {"status": "AI EdTech running"}
+    return {"status": "ExamPanic AI running 🚀"}
 
 
 @app.get("/health")
@@ -78,28 +77,23 @@ def health():
     return {"status": "ok"}
 
 
-# 🚀 UPGRADED LEARN (ICSE BOOK MODE)
+# 📚 LEARN ENGINE (ICSE BOOK STYLE)
 @app.post("/learn")
 def learn(data: LearnRequest):
     try:
         prompt = f"""
-You are an ICSE textbook author and expert teacher.
+You are an ICSE textbook author + viral teacher AI.
 
-Format the lesson like a school textbook:
-
+Format:
 📘 Chapter Title
 📌 Definition
-📖 Explanation (step-by-step)
+📖 Explanation
 🧠 Examples
 ⭐ Key Points
-📝 Important Questions
+📝 Questions
 🔁 Revision Box
 
-Rules:
-- simple English
-- exam focused
-- structured like ICSE book
-- no extra junk
+Make it simple and exam focused.
 
 Class: {data.student_class}
 Subject: {data.subject}
@@ -121,7 +115,7 @@ Chapter: {data.chapter}
         return {"error": str(e)}
 
 
-# 🚀 UPGRADED CHAT (PERSONALITY FIX)
+# 💬 CHAT ENGINE
 @app.post("/chat")
 def chat(data: ChatInput):
     try:
@@ -131,13 +125,12 @@ def chat(data: ChatInput):
                 {
                     "role": "system",
                     "content": """
-You are ExamPanic AI — an ICSE study assistant.
+You are ExamPanic AI — a friendly ICSE study coach.
 
 Be:
-- friendly teacher
-- clear and simple
+- simple
+- motivational
 - exam focused
-- motivational when needed
 """
                 },
                 {
@@ -154,6 +147,7 @@ Be:
         return {"error": str(e)}
 
 
+# 📚 SAVE CHAPTER
 @app.post("/save-chapter")
 def save_chapter(data: LearnRequest):
     conn = get_conn()
@@ -171,31 +165,7 @@ def save_chapter(data: LearnRequest):
     return {"message": "saved"}
 
 
-@app.get("/chapters")
-def get_chapters():
-    conn = get_conn()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT student_name, subject, chapter
-        FROM chapters
-        ORDER BY id DESC
-        LIMIT 20
-    """)
-
-    rows = cur.fetchall()
-
-    cur.close()
-    conn.close()
-
-    return {
-        "chapters": [
-            {"student": r[0], "subject": r[1], "chapter": r[2]}
-            for r in rows
-        ]
-    }
-
-
+# 🏆 LEADERBOARD (FIXED XP BUG)
 @app.get("/leaderboard")
 def leaderboard():
     conn = get_conn()
@@ -205,7 +175,7 @@ def leaderboard():
         SELECT student_name, COALESCE(SUM(xp),0)
         FROM chapters
         GROUP BY student_name
-        ORDER BY SUM(xp) DESC
+        ORDER BY COALESCE(SUM(xp),0) DESC
         LIMIT 10
     """)
 
@@ -216,12 +186,13 @@ def leaderboard():
 
     return {
         "leaderboard": [
-            {"name": r[0], "xp": r[1]}
+            {"name": r[0], "xp": int(r[1])}
             for r in rows
         ]
     }
 
 
+# ⚡ QUICK ACCESS
 @app.get("/quick-access")
 def quick_access():
     conn = get_conn()
@@ -238,4 +209,22 @@ def quick_access():
             {"subject": r[0], "chapter": r[1]}
             for r in rows
         ]
+    }
+
+
+# 😂 VIRAL MEME ENDPOINT (IMPORTANT)
+@app.post("/meme")
+def meme(data: ChatInput):
+    return {
+        "meme": f"When you study {data.message} but your brain goes ‘buffering…’ 🤯😂"
+    }
+
+
+# 🔥 SHARE REWARD (VIRAL LOOP HOOK)
+@app.post("/share")
+def share():
+    return {
+        "status": "ok",
+        "bonus_xp": 5,
+        "message": "Shared successfully 🚀"
     }
