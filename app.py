@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -22,10 +23,12 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+
 def get_conn():
     if not DATABASE_URL:
         raise Exception("DATABASE_URL missing")
     return psycopg2.connect(DATABASE_URL, sslmode="require")
+
 
 def init_db():
     try:
@@ -50,7 +53,9 @@ def init_db():
     except Exception as e:
         print("DB ERROR:", e)
 
+
 init_db()
+
 
 class LearnRequest(BaseModel):
     student_name: str
@@ -58,37 +63,47 @@ class LearnRequest(BaseModel):
     subject: str
     chapter: str
 
+
 class ChatInput(BaseModel):
     message: str
+
 
 @app.get("/")
 def home():
     return {"status": "AI EdTech running"}
 
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
+
+# 🚀 UPGRADED LEARN (ICSE BOOK MODE)
 @app.post("/learn")
 def learn(data: LearnRequest):
     try:
         prompt = f"""
-You are an expert ICSE teacher.
+You are an ICSE textbook author and expert teacher.
 
-Teach the chapter in a detailed classroom style.
+Format the lesson like a school textbook:
+
+📘 Chapter Title
+📌 Definition
+📖 Explanation (step-by-step)
+🧠 Examples
+⭐ Key Points
+📝 Important Questions
+🔁 Revision Box
+
+Rules:
+- simple English
+- exam focused
+- structured like ICSE book
+- no extra junk
 
 Class: {data.student_class}
 Subject: {data.subject}
 Chapter: {data.chapter}
-
-Rules:
-- simple language
-- step-by-step explanation
-- examples
-- definitions
-- revision notes
-- practice questions
-- deep understanding for weak students
 """
 
         response = client.chat.completions.create(
@@ -97,11 +112,16 @@ Rules:
             max_tokens=2000
         )
 
-        return {"lesson": response.choices[0].message.content}
+        return {
+            "lesson": response.choices[0].message.content,
+            "mode": "ICSE_BOOK"
+        }
 
     except Exception as e:
         return {"error": str(e)}
 
+
+# 🚀 UPGRADED CHAT (PERSONALITY FIX)
 @app.post("/chat")
 def chat(data: ChatInput):
     try:
@@ -111,10 +131,13 @@ def chat(data: ChatInput):
                 {
                     "role": "system",
                     "content": """
-You are ExamPanic AI.
+You are ExamPanic AI — an ICSE study assistant.
 
-Help students with doubts, exams, revision, motivation, and study planning.
-Be friendly and simple like a teacher.
+Be:
+- friendly teacher
+- clear and simple
+- exam focused
+- motivational when needed
 """
                 },
                 {
@@ -129,6 +152,7 @@ Be friendly and simple like a teacher.
 
     except Exception as e:
         return {"error": str(e)}
+
 
 @app.post("/save-chapter")
 def save_chapter(data: LearnRequest):
@@ -146,12 +170,19 @@ def save_chapter(data: LearnRequest):
 
     return {"message": "saved"}
 
+
 @app.get("/chapters")
 def get_chapters():
     conn = get_conn()
     cur = conn.cursor()
 
-    cur.execute("SELECT student_name, subject, chapter FROM chapters ORDER BY id DESC LIMIT 20")
+    cur.execute("""
+        SELECT student_name, subject, chapter
+        FROM chapters
+        ORDER BY id DESC
+        LIMIT 20
+    """)
+
     rows = cur.fetchall()
 
     cur.close()
@@ -164,17 +195,18 @@ def get_chapters():
         ]
     }
 
+
 @app.get("/leaderboard")
 def leaderboard():
     conn = get_conn()
     cur = conn.cursor()
 
     cur.execute("""
-    SELECT student_name, SUM(xp)
-    FROM chapters
-    GROUP BY student_name
-    ORDER BY SUM(xp) DESC
-    LIMIT 10
+        SELECT student_name, COALESCE(SUM(xp),0)
+        FROM chapters
+        GROUP BY student_name
+        ORDER BY SUM(xp) DESC
+        LIMIT 10
     """)
 
     rows = cur.fetchall()
@@ -188,6 +220,7 @@ def leaderboard():
             for r in rows
         ]
     }
+
 
 @app.get("/quick-access")
 def quick_access():
