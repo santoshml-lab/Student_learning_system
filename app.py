@@ -7,6 +7,7 @@ import psycopg2
 
 app = FastAPI()
 
+# 🌍 CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,8 +16,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 🤖 AI CLIENT
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
+# 🗄️ DATABASE
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
@@ -29,6 +32,7 @@ def get_conn():
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
 
+# 🧱 INIT DB
 def init_db():
     try:
         conn = get_conn()
@@ -55,7 +59,7 @@ def init_db():
 
 init_db()
 
-
+# 📦 MODELS
 class LearnRequest(BaseModel):
     student_name: str
     student_class: str
@@ -67,6 +71,7 @@ class ChatInput(BaseModel):
     message: str
 
 
+# 🚀 HOME
 @app.get("/")
 def home():
     return {"status": "ExamPanic AI running 🚀"}
@@ -77,12 +82,12 @@ def health():
     return {"status": "ok"}
 
 
-# 📚 LEARN ENGINE (ICSE BOOK STYLE)
+# 📚 LEARN API (ICSE BOOK STYLE)
 @app.post("/learn")
 def learn(data: LearnRequest):
     try:
         prompt = f"""
-You are an ICSE textbook author + viral teacher AI.
+You are an ICSE textbook author and expert teacher.
 
 Format:
 📘 Chapter Title
@@ -93,7 +98,11 @@ Format:
 📝 Questions
 🔁 Revision Box
 
-Make it simple and exam focused.
+Rules:
+- simple English
+- exam focused
+- structured like ICSE book
+- no extra junk
 
 Class: {data.student_class}
 Subject: {data.subject}
@@ -115,7 +124,7 @@ Chapter: {data.chapter}
         return {"error": str(e)}
 
 
-# 💬 CHAT ENGINE
+# 💬 CHAT API
 @app.post("/chat")
 def chat(data: ChatInput):
     try:
@@ -127,10 +136,10 @@ def chat(data: ChatInput):
                     "content": """
 You are ExamPanic AI — a friendly ICSE study coach.
 
-Be:
-- simple
-- motivational
-- exam focused
+Rules:
+- simple language
+- motivational tone
+- exam focused answers
 """
                 },
                 {
@@ -141,7 +150,9 @@ Be:
             max_tokens=1200
         )
 
-        return {"reply": response.choices[0].message.content}
+        return {
+            "reply": response.choices[0].message.content
+        }
 
     except Exception as e:
         return {"error": str(e)}
@@ -165,7 +176,7 @@ def save_chapter(data: LearnRequest):
     return {"message": "saved"}
 
 
-# 🏆 LEADERBOARD (FIXED XP BUG)
+# 🏆 LEADERBOARD
 @app.get("/leaderboard")
 def leaderboard():
     conn = get_conn()
@@ -212,7 +223,7 @@ def quick_access():
     }
 
 
-# 😂 VIRAL MEME ENDPOINT (IMPORTANT)
+# 😂 MEME API
 @app.post("/meme")
 def meme(data: ChatInput):
     return {
@@ -220,7 +231,7 @@ def meme(data: ChatInput):
     }
 
 
-# 🔥 SHARE REWARD (VIRAL LOOP HOOK)
+# 🔥 SHARE XP API
 @app.post("/share")
 def share():
     return {
