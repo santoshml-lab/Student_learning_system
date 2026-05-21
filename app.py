@@ -4,8 +4,9 @@ from pydantic import BaseModel
 from groq import Groq
 import os
 import psycopg2
-from fastapi.responses import StreamingResponse
 import io
+from fastapi.responses import StreamingResponse, HTMLResponse
+from datetime import datetime
 
 app = FastAPI()
 
@@ -57,7 +58,6 @@ def learn(data: LearnRequest):
     prompt = f"""
 You are an ICSE expert teacher.
 
-Format:
 📘 Title
 📌 Definition
 📖 Explanation
@@ -70,59 +70,48 @@ Subject: {data.subject}
 Chapter: {data.chapter}
 """
 
-    response = client.chat.completions.create(
+    res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": prompt}],
-        max_tokens=2000
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=1500
     )
 
-    return {"lesson": response.choices[0].message.content}
+    return {"lesson": res.choices[0].message.content}
 
 
 # 💬 CHAT API
 @app.post("/chat")
 def chat(data: ChatInput):
 
-    response = client.chat.completions.create(
+    res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=[
-            {"role": "system", "content": "You are a helpful ICSE study assistant."},
+            {"role": "system", "content": "You are ICSE study assistant."},
             {"role": "user", "content": data.message}
         ],
         max_tokens=1000
     )
 
-    return {"reply": response.choices[0].message.content}
+    return {"reply": res.choices[0].message.content}
 
 
-# 📘 NOTES GENERATOR
+# 🧠 NOTES
 @app.post("/generate-notes")
 def notes(data: LearnRequest):
 
     prompt = f"""
 Create 1-page ICSE revision notes:
-
-📘 Topic
-📌 Definition
-📖 Short Explanation
-🧠 Key Points
-⚡ Formulas
-📝 Exam Tips
-
-Class: {data.student_class}
 Subject: {data.subject}
 Chapter: {data.chapter}
-
-VERY SHORT AND EXAM READY
 """
 
-    response = client.chat.completions.create(
+    res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": prompt}],
+        messages=[{"role": "user", "content": prompt}],
         max_tokens=1200
     )
 
-    return {"notes": response.choices[0].message.content}
+    return {"notes": res.choices[0].message.content}
 
 
 # 📥 DOWNLOAD NOTES
@@ -130,20 +119,18 @@ VERY SHORT AND EXAM READY
 def download_notes(data: LearnRequest):
 
     prompt = f"""
-Make clean ICSE revision notes:
-
-Topic: {data.chapter}
+Make exam notes:
 Subject: {data.subject}
-Class: {data.student_class}
+Chapter: {data.chapter}
 """
 
-    response = client.chat.completions.create(
+    res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": prompt}],
+        messages=[{"role": "user", "content": prompt}],
         max_tokens=1200
     )
 
-    text = response.choices[0].message.content
+    text = res.choices[0].message.content
 
     buffer = io.StringIO()
     buffer.write(text)
@@ -161,20 +148,14 @@ Class: {data.student_class}
 def confusion(data: LearnRequest):
 
     prompt = f"""
-Explain like weak student:
-
+Explain simply:
 Topic: {data.chapter}
 Subject: {data.subject}
-
-Rules:
-- very simple English
-- step by step
-- real life examples
 """
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": prompt}],
+        messages=[{"role": "user", "content": prompt}],
         max_tokens=1200
     )
 
@@ -186,19 +167,13 @@ Rules:
 def quick_revision(data: LearnRequest):
 
     prompt = f"""
-Give ultra short revision:
-
+Ultra short revision:
 Topic: {data.chapter}
-
-Rules:
-- only key points
-- formulas
-- exam tips
 """
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": prompt}],
+        messages=[{"role": "user", "content": prompt}],
         max_tokens=800
     )
 
@@ -211,25 +186,103 @@ def mcq(data: LearnRequest):
 
     prompt = f"""
 Generate 10 MCQs:
-
 Topic: {data.chapter}
-
-Include:
-- question
-- 4 options
-- correct answer at end
 """
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": prompt}],
+        messages=[{"role": "user", "content": prompt}],
         max_tokens=1200
     )
 
     return {"result": res.choices[0].message.content}
 
 
-# 📚 SAVE CHAPTER
+# 📊 ANALYTICS
+@app.get("/analytics/{student_name}")
+def analytics(student_name: str):
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT subject, COUNT(*)
+        FROM chapters
+        WHERE student_name=%s
+        GROUP BY subject
+    """, (student_name,))
+
+    rows = cur.fetchall()
+
+    total = sum([r[1] for r in rows])
+
+    strong = max(rows, key=lambda x: x[1])[0] if rows else "-"
+    weak = min(rows, key=lambda x: x[1])[0] if rows else "-"
+
+    return {
+        "total_chapters": total,
+        "total_xp": total * 10,
+        "strong_subject": strong,
+        "weak_subject": weak,
+        "streak": min(total, 30)
+    }
+
+
+# 🎯 EXAM PREDICTOR (NEW)
+@app.post("/predict")
+def predict(data: dict):
+
+    confidence = data.get("confidence", 5)
+    mcq = data.get("mcq_score", 5)
+    chapters = data.get("chapters_completed", 0)
+
+    score = confidence*6 + mcq*4 + chapters*2
+    score = min(score, 100)
+
+    if score >= 80:
+        risk = "LOW 🟢"
+    elif score >= 50:
+        risk = "MEDIUM 🟡"
+    else:
+        risk = "HIGH 🔴"
+
+    return {
+        "expected_score": score,
+        "risk_level": risk,
+        "weak_area": "Revise weak topics + MCQs"
+    }
+
+
+# 🎓 CERTIFICATE SYSTEM (NEW)
+@app.post("/certificate")
+def certificate(data: dict):
+
+    name = data.get("student_name", "Student")
+    subject = data.get("subject", "Study")
+    score = data.get("score", 80)
+
+    date = datetime.now().strftime("%d-%m-%Y")
+
+    html = f"""
+    <html>
+    <body style="background:#0b1020;color:white;text-align:center;padding:50px;">
+    <div style="border:2px solid #38bdf8;padding:30px;border-radius:20px;display:inline-block;">
+        <h1 style="color:#38bdf8;">🎓 Certificate</h1>
+        <h2>{name}</h2>
+        <p>{subject}</p>
+        <h3>{score}/100</h3>
+        <p>Date: {date}</p>
+        <br>
+        <p>🚀 ExamPanic AI</p>
+    </div>
+    </body>
+    </html>
+    """
+
+    return HTMLResponse(html)
+
+
+# 📚 SAVE CHAPTER (optional)
 @app.post("/save-chapter")
 def save(data: LearnRequest):
 
@@ -237,7 +290,7 @@ def save(data: LearnRequest):
     cur = conn.cursor()
 
     cur.execute(
-        "INSERT INTO chapters (student_name, student_class, subject, chapter) VALUES (%s,%s,%s,%s)",
+        "INSERT INTO chapters VALUES (%s,%s,%s,%s)",
         (data.student_name, data.student_class, data.subject, data.chapter)
     )
 
@@ -265,78 +318,11 @@ def leaderboard():
 
     rows = cur.fetchall()
 
-    cur.close()
-    conn.close()
-
     return {
         "leaderboard": [
-            {"name": r[0], "xp": r[1] * 10}
+            {"name": r[0], "xp": r[1]*10}
             for r in rows
         ]
-    }
-
-
-# ⚡ QUICK ACCESS
-@app.get("/quick-access")
-def quick():
-
-    conn = get_conn()
-    cur = conn.cursor()
-
-    cur.execute("SELECT subject, chapter FROM chapters LIMIT 10")
-    rows = cur.fetchall()
-
-    cur.close()
-    conn.close()
-
-    return {
-        "quick_access": [
-            {"subject": r[0], "chapter": r[1]}
-            for r in rows
-        ]
-    }
-
-
-# 📊 ANALYTICS DASHBOARD
-@app.get("/analytics/{student_name}")
-def analytics(student_name: str):
-
-    conn = get_conn()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT subject, COUNT(*)
-        FROM chapters
-        WHERE student_name = %s
-        GROUP BY subject
-    """, (student_name,))
-
-    rows = cur.fetchall()
-
-    total_chapters = sum([r[1] for r in rows])
-
-    strong_subject = "None"
-    weak_subject = "None"
-
-    if rows:
-        strong_subject = max(rows, key=lambda x: x[1])[0]
-        weak_subject = min(rows, key=lambda x: x[1])[0]
-
-    total_xp = total_chapters * 10
-
-    streak = min(total_chapters, 30)
-
-    cur.close()
-    conn.close()
-
-    return {
-        "student": student_name,
-        "total_chapters": total_chapters,
-        "total_xp": total_xp,
-        "strong_subject": strong_subject,
-        "weak_subject": weak_subject,
-        "streak": streak,
-        "status": "success"
     }
 
 
@@ -344,16 +330,11 @@ def analytics(student_name: str):
 @app.post("/meme")
 def meme(data: ChatInput):
 
-    return {
-        "meme": f"When you study {data.message} but brain says sleep 😴"
-    }
+    return {"meme": f"When you study {data.message} but brain says sleep 😴"}
 
 
-# 🔥 SHARE XP
+# 🔥 SHARE
 @app.post("/share")
 def share():
-
-    return {
-        "bonus_xp": 5,
-        "message": "Shared successfully 🚀"
-    }
+    return {"bonus_xp": 5, "message": "Shared successfully 🚀"}
+    
