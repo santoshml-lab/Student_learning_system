@@ -1,9 +1,12 @@
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
 import os
 import psycopg2
+from fastapi.responses import StreamingResponse
+import io
 
 app = FastAPI()
 
@@ -27,37 +30,8 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
 
 
 def get_conn():
-    if not DATABASE_URL:
-        raise Exception("DATABASE_URL missing")
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
-
-# 🧱 INIT DB
-def init_db():
-    try:
-        conn = get_conn()
-        cur = conn.cursor()
-
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS chapters (
-            id SERIAL PRIMARY KEY,
-            student_name TEXT,
-            student_class TEXT,
-            subject TEXT,
-            chapter TEXT,
-            xp INTEGER DEFAULT 10
-        )
-        """)
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-    except Exception as e:
-        print("DB ERROR:", e)
-
-
-init_db()
 
 # 📦 MODELS
 class LearnRequest(BaseModel):
@@ -77,90 +51,123 @@ def home():
     return {"status": "ExamPanic AI running 🚀"}
 
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-
-# 📚 LEARN API (ICSE BOOK STYLE)
+# 📚 LEARN API
 @app.post("/learn")
 def learn(data: LearnRequest):
-    try:
-        prompt = f"""
-You are an ICSE textbook author and expert teacher.
+
+    prompt = f"""
+You are an ICSE expert teacher.
 
 Format:
-📘 Chapter Title
+📘 Title
 📌 Definition
 📖 Explanation
 🧠 Examples
 ⭐ Key Points
 📝 Questions
-🔁 Revision Box
-
-Rules:
-- simple English
-- exam focused
-- structured like ICSE book
-- no extra junk
 
 Class: {data.student_class}
 Subject: {data.subject}
 Chapter: {data.chapter}
 """
 
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "system", "content": prompt}],
-            max_tokens=2000
-        )
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "system", "content": prompt}],
+        max_tokens=2000
+    )
 
-        return {
-            "lesson": response.choices[0].message.content,
-            "mode": "ICSE_BOOK"
-        }
-
-    except Exception as e:
-        return {"error": str(e)}
+    return {"lesson": response.choices[0].message.content}
 
 
 # 💬 CHAT API
 @app.post("/chat")
 def chat(data: ChatInput):
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {
-                    "role": "system",
-                    "content": """
-You are ExamPanic AI — a friendly ICSE study coach.
 
-Rules:
-- simple language
-- motivational tone
-- exam focused answers
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {"role": "system", "content": "You are a helpful ICSE study assistant."},
+            {"role": "user", "content": data.message}
+        ],
+        max_tokens=1000
+    )
+
+    return {"reply": response.choices[0].message.content}
+
+
+# 📘 NOTES GENERATOR (1-PAGE)
+@app.post("/generate-notes")
+def notes(data: LearnRequest):
+
+    prompt = f"""
+Create 1-page ICSE revision notes:
+
+📘 Topic
+📌 Definition
+📖 Short Explanation
+🧠 Key Points
+⚡ Formulas (if any)
+📝 Exam Tips
+
+Class: {data.student_class}
+Subject: {data.subject}
+Chapter: {data.chapter}
+
+VERY SHORT AND EXAM READY
 """
-                },
-                {
-                    "role": "user",
-                    "content": data.message
-                }
-            ],
-            max_tokens=1200
-        )
 
-        return {
-            "reply": response.choices[0].message.content
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "system", "content": prompt}],
+        max_tokens=1200
+    )
+
+    return {"notes": response.choices[0].message.content}
+
+
+# 📥 DOWNLOAD NOTES (NEW 🔥)
+@app.post("/download-notes")
+def download_notes(data: LearnRequest):
+
+    prompt = f"""
+Make clean exam revision notes:
+
+Topic: {data.chapter}
+Subject: {data.subject}
+Class: {data.student_class}
+
+Format:
+- simple headings
+- short points
+- exam ready
+"""
+
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "system", "content": prompt}],
+        max_tokens=1200
+    )
+
+    text = response.choices[0].message.content
+
+    buffer = io.StringIO()
+    buffer.write(text)
+    buffer.seek(0)
+
+    return StreamingResponse(
+        buffer,
+        media_type="text/plain",
+        headers={
+            "Content-Disposition": "attachment; filename=notes.txt"
         }
-
-    except Exception as e:
-        return {"error": str(e)}
+    )
 
 
 # 📚 SAVE CHAPTER
 @app.post("/save-chapter")
-def save_chapter(data: LearnRequest):
+def save(data: LearnRequest):
+
     conn = get_conn()
     cur = conn.cursor()
 
@@ -179,14 +186,15 @@ def save_chapter(data: LearnRequest):
 # 🏆 LEADERBOARD
 @app.get("/leaderboard")
 def leaderboard():
+
     conn = get_conn()
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT student_name, COALESCE(SUM(xp),0)
+        SELECT student_name, COUNT(*)
         FROM chapters
         GROUP BY student_name
-        ORDER BY COALESCE(SUM(xp),0) DESC
+        ORDER BY COUNT(*) DESC
         LIMIT 10
     """)
 
@@ -197,7 +205,7 @@ def leaderboard():
 
     return {
         "leaderboard": [
-            {"name": r[0], "xp": int(r[1])}
+            {"name": r[0], "xp": r[1] * 10}
             for r in rows
         ]
     }
@@ -205,7 +213,8 @@ def leaderboard():
 
 # ⚡ QUICK ACCESS
 @app.get("/quick-access")
-def quick_access():
+def quick():
+
     conn = get_conn()
     cur = conn.cursor()
 
@@ -223,19 +232,20 @@ def quick_access():
     }
 
 
-# 😂 MEME API
+# 😂 MEME
 @app.post("/meme")
 def meme(data: ChatInput):
+
     return {
-        "meme": f"When you study {data.message} but your brain goes ‘buffering…’ 🤯😂"
+        "meme": f"When you study {data.message} but brain says ‘sleep mode 😴’"
     }
 
 
-# 🔥 SHARE XP API
+# 🔥 SHARE XP
 @app.post("/share")
 def share():
+
     return {
-        "status": "ok",
         "bonus_xp": 5,
         "message": "Shared successfully 🚀"
     }
