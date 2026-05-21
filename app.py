@@ -96,7 +96,7 @@ def chat(data: ChatInput):
     return {"reply": response.choices[0].message.content}
 
 
-# 📘 NOTES GENERATOR (1-PAGE)
+# 📘 NOTES GENERATOR
 @app.post("/generate-notes")
 def notes(data: LearnRequest):
 
@@ -107,7 +107,7 @@ Create 1-page ICSE revision notes:
 📌 Definition
 📖 Short Explanation
 🧠 Key Points
-⚡ Formulas (if any)
+⚡ Formulas
 📝 Exam Tips
 
 Class: {data.student_class}
@@ -126,21 +126,16 @@ VERY SHORT AND EXAM READY
     return {"notes": response.choices[0].message.content}
 
 
-# 📥 DOWNLOAD NOTES (NEW 🔥)
+# 📥 DOWNLOAD NOTES
 @app.post("/download-notes")
 def download_notes(data: LearnRequest):
 
     prompt = f"""
-Make clean exam revision notes:
+Make clean ICSE revision notes:
 
 Topic: {data.chapter}
 Subject: {data.subject}
 Class: {data.student_class}
-
-Format:
-- simple headings
-- short points
-- exam ready
 """
 
     response = client.chat.completions.create(
@@ -158,10 +153,81 @@ Format:
     return StreamingResponse(
         buffer,
         media_type="text/plain",
-        headers={
-            "Content-Disposition": "attachment; filename=notes.txt"
-        }
+        headers={"Content-Disposition": "attachment; filename=notes.txt"}
     )
+
+
+# 🧠 CONFUSION MODE (NEW)
+@app.post("/confusion-mode")
+def confusion(data: LearnRequest):
+
+    prompt = f"""
+Explain like weak student:
+
+Topic: {data.chapter}
+Subject: {data.subject}
+
+Rules:
+- very simple English
+- step by step
+- real life examples
+"""
+
+    res = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "system", "content": prompt}],
+        max_tokens=1200
+    )
+
+    return {"result": res.choices[0].message.content}
+
+
+# ⚡ QUICK REVISION (NEW)
+@app.post("/quick-revision")
+def quick_revision(data: LearnRequest):
+
+    prompt = f"""
+Give ultra short revision:
+
+Topic: {data.chapter}
+
+Rules:
+- only key points
+- formulas
+- exam tips
+"""
+
+    res = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "system", "content": prompt}],
+        max_tokens=800
+    )
+
+    return {"result": res.choices[0].message.content}
+
+
+# ❓ MCQ TEST (NEW)
+@app.post("/mcq-test")
+def mcq(data: LearnRequest):
+
+    prompt = f"""
+Generate 10 MCQs:
+
+Topic: {data.chapter}
+
+Include:
+- question
+- 4 options
+- correct answer at end
+"""
+
+    res = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "system", "content": prompt}],
+        max_tokens=1200
+    )
+
+    return {"result": res.choices[0].message.content}
 
 
 # 📚 SAVE CHAPTER
@@ -237,7 +303,7 @@ def quick():
 def meme(data: ChatInput):
 
     return {
-        "meme": f"When you study {data.message} but brain says ‘sleep mode 😴’"
+        "meme": f"When you study {data.message} but brain says sleep 😴"
     }
 
 
