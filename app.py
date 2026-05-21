@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -157,7 +156,7 @@ Class: {data.student_class}
     )
 
 
-# 🧠 CONFUSION MODE (NEW)
+# 🧠 CONFUSION MODE
 @app.post("/confusion-mode")
 def confusion(data: LearnRequest):
 
@@ -182,7 +181,7 @@ Rules:
     return {"result": res.choices[0].message.content}
 
 
-# ⚡ QUICK REVISION (NEW)
+# ⚡ QUICK REVISION
 @app.post("/quick-revision")
 def quick_revision(data: LearnRequest):
 
@@ -206,7 +205,7 @@ Rules:
     return {"result": res.choices[0].message.content}
 
 
-# ❓ MCQ TEST (NEW)
+# ❓ MCQ TEST
 @app.post("/mcq-test")
 def mcq(data: LearnRequest):
 
@@ -295,6 +294,49 @@ def quick():
             {"subject": r[0], "chapter": r[1]}
             for r in rows
         ]
+    }
+
+
+# 📊 ANALYTICS DASHBOARD
+@app.get("/analytics/{student_name}")
+def analytics(student_name: str):
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT subject, COUNT(*)
+        FROM chapters
+        WHERE student_name = %s
+        GROUP BY subject
+    """, (student_name,))
+
+    rows = cur.fetchall()
+
+    total_chapters = sum([r[1] for r in rows])
+
+    strong_subject = "None"
+    weak_subject = "None"
+
+    if rows:
+        strong_subject = max(rows, key=lambda x: x[1])[0]
+        weak_subject = min(rows, key=lambda x: x[1])[0]
+
+    total_xp = total_chapters * 10
+
+    streak = min(total_chapters, 30)
+
+    cur.close()
+    conn.close()
+
+    return {
+        "student": student_name,
+        "total_chapters": total_chapters,
+        "total_xp": total_xp,
+        "strong_subject": strong_subject,
+        "weak_subject": weak_subject,
+        "streak": streak,
+        "status": "success"
     }
 
 
