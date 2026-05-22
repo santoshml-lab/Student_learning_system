@@ -2,4 +2,7 @@ fastapi
 uvicorn
 groq
 psycopg2-binary
-pydantic
+python-dotenv
+joblib
+numpy
+scikit-learn
