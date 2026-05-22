@@ -293,19 +293,19 @@ Class: {data.student_class}
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=[
-            {{
+            {
                 "role": "system",
                 "content": prompt
-            }}
+            }
         ],
         max_tokens=1200
     )
 
     content = res.choices[0].message.content
 
-    return {{
+    return {
         "result": content
-    }}
+    }
 
          
         
