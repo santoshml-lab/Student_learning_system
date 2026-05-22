@@ -266,34 +266,49 @@ Rules:
     }
 
 # ❓ MCQ TEST
+# ❓ MCQ TEST (FIXED JSON VERSION)
 @app.post("/mcq-test")
 def mcq(data: LearnRequest):
 
     prompt = f"""
-Generate 10 MCQs:
+Generate exactly 5 MCQs in STRICT JSON format.
+
+Return ONLY JSON.
+
+Format:
+
+[
+  {{
+    "question": "What is ...?",
+    "options": ["A", "B", "C", "D"],
+    "answer": "A"
+  }}
+]
 
 Topic: {data.chapter}
-
-Include:
-- question
-- 4 options
-- correct answer at end
+Subject: {data.subject}
+Class: {data.student_class}
 """
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=[
-            {
+            {{
                 "role": "system",
                 "content": prompt
-            }
+            }}
         ],
         max_tokens=1200
     )
 
-    return {
-        "result": res.choices[0].message.content
-    }
+    content = res.choices[0].message.content
+
+    return {{
+        "result": content
+    }}
+
+         
+        
 
 # 📚 SAVE CHAPTER
 @app.post("/save-chapter")
