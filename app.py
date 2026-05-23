@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -18,19 +17,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ================= AI CLIENT =================
+# ================= AI =================
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# ================= ML MODEL =================
+# ================= MODEL =================
 model = None
 try:
     model = joblib.load("exam_predictor.pkl")
     print("✅ Model loaded")
 except:
-    print("⚠ Model not found")
+    print("⚠ Model not loaded")
 
 # ================= MODELS =================
-
 class LearnRequest(BaseModel):
     student_name: str
     student_class: str
@@ -103,6 +101,86 @@ def chat(data: ChatInput):
 
     return {"reply": res.choices[0].message.content}
 
+# ================= MCQ GENERATE =================
+@app.post("/mock-test-generate")
+def generate_test(data: MockRequest):
+
+    prompt = f"""
+Generate 5 MCQs STRICT JSON ONLY.
+
+FORMAT:
+[
+  {{
+    "question": "...",
+    "options": ["A","B","C","D"],
+    "answer": "A"
+  }}
+]
+
+Class: {data.student_class}
+Subject: {data.subject}
+Chapter: {data.chapter}
+"""
+
+    res = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role":"system","content":prompt}],
+        max_tokens=1500
+    )
+
+    content = res.choices[0].message.content.replace("```json","").replace("```","").strip()
+
+    try:
+        questions = json.loads(content)
+
+        return {
+            "status": "success",
+            "questions": questions
+        }
+
+    except Exception as e:
+
+        return {
+            "status": "error",
+            "questions": [],
+            "raw": content
+        }
+
+# ================= MCQ EVALUATE (FIXED CORE BUG) =================
+@app.post("/mock-test-evaluate")
+def evaluate(data: MockSubmit):
+
+    if not data.questions or len(data.questions) == 0:
+        return {
+            "score": 0,
+            "correct": 0,
+            "total": 0,
+            "performance": "No Questions Found"
+        }
+
+    correct = 0
+
+    for i in range(len(data.questions)):
+
+        if i >= len(data.answers):
+            continue
+
+        user_ans = str(data.answers[i]).strip().upper()
+        correct_ans = str(data.questions[i]["answer"]).strip().upper()
+
+        if user_ans == correct_ans:
+            correct += 1
+
+    total = len(data.questions)
+
+    score = round((correct / total) * 100, 2) if total > 0 else 0
+
+    return {
+        "score": score,
+        "correct": correct,
+        "total": total
+    }
+
 # ================= PREDICT =================
 @app.post("/predict-exam")
 def predict(data: PredictorInput):
@@ -129,69 +207,6 @@ def predict(data: PredictorInput):
     return {
         "predicted_marks": prediction,
         "performance": performance
-    }
-
-# ================= MCQ GENERATE =================
-@app.post("/mock-test-generate")
-def generate_test(data: MockRequest):
-
-    prompt = f"""
-Generate 5 MCQs STRICT JSON ONLY.
-
-Format:
-[
-  {{
-    "question": "...",
-    "options": ["A","B","C","D"],
-    "answer": "A"
-  }}
-]
-
-Class: {data.student_class}
-Subject: {data.subject}
-Chapter: {data.chapter}
-"""
-
-    res = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role":"system","content":prompt}],
-        max_tokens=1500
-    )
-
-    content = res.choices[0].message.content
-
-    content = content.replace("```json","").replace("```","").strip()
-
-    try:
-        return {
-            "questions": json.loads(content)
-        }
-    except:
-        return {
-            "questions": [],
-            "raw": content
-        }
-
-# ================= MCQ EVALUATE =================
-@app.post("/mock-test-evaluate")
-def evaluate(data: MockSubmit):
-
-    correct = 0
-
-    for i in range(len(data.questions)):
-
-        user_ans = str(data.answers[i]).strip().upper()
-        correct_ans = str(data.questions[i]["answer"]).strip().upper()
-
-        if user_ans == correct_ans:
-            correct += 1
-
-    score = round((correct / len(data.questions)) * 100, 2)
-
-    return {
-        "score": score,
-        "correct": correct,
-        "total": len(data.questions)
     }
 
 # ================= NOTES =================
