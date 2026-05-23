@@ -1,135 +1,47 @@
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
-from fastapi.responses import StreamingResponse
-import psycopg2
-import joblib
-import numpy as np
-import os
-import io
 import json
+import os
 
-# ================= APP =================
-app = FastAPI(title="ExamPanic AI 🚀")
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
-# ================= AI CLIENT =================
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
-# ================= DB =================
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-
-def get_conn():
-    return psycopg2.connect(DATABASE_URL, sslmode="require")
-
-# ================= ML MODEL =================
-model = None
-try:
-    model = joblib.load("exam_predictor.pkl")
-    print("✅ ML Model Loaded")
-except Exception as e:
-    print("❌ Model not loaded:", e)
-
-# ================= MODELS =================
-class LearnRequest(BaseModel):
-    student_name: str
-    student_class: str
-    subject: str
-    chapter: str
-
-class ChatInput(BaseModel):
-    message: str
-
-class PredictorInput(BaseModel):
-    chapters_done: int
-    revision_count: int
-    attendance: int
-    test_score: int
 
 class MockRequest(BaseModel):
     student_class: str
     subject: str
     chapter: str
 
-class MockSubmit(BaseModel):
+class Submit(BaseModel):
     questions: list
     answers: list
-    chapters_done: int
-    revision_count: int
-    attendance: int
 
-# ================= HOME =================
-@app.get("/")
-def home():
-    return {"status": "ExamPanic AI Running 🚀"}
-
-# ================= LESSON =================
-@app.post("/learn")
-def learn(data: LearnRequest):
+@app.post("/generate-test")
+def generate_test(data: MockRequest):
 
     prompt = f"""
-ICSE Expert Teacher:
+Generate 5 MCQs STRICT JSON ONLY.
 
-📘 Title
-📌 Definition
-📖 Explanation
-🧠 Examples
-⭐ Key Points
-📝 Questions
-
-Class: {data.student_class}
-Subject: {data.subject}
-Chapter: {data.chapter}
-"""
-
-    res = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": prompt}],
-        max_tokens=2000
-    )
-
-    return {"lesson": res.choices[0].message.content}
-
-# ================= CHAT =================
-@app.post("/chat")
-def chat(data: ChatInput):
-
-    res = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[
-            {"role": "system", "content": "You are ICSE tutor."},
-            {"role": "user", "content": data.message}
-        ],
-        max_tokens=1000
-    )
-
-    return {"reply": res.choices[0].message.content}
-
-# ================= MCQ GENERATE (FIXED) =================
-@app.post("/mock-test-generate")
-def mock(data: MockRequest):
-
-    prompt = f"""
-Generate exactly 5 MCQs.
-
-Return ONLY valid JSON array.
-
-Format:
+FORMAT:
 [
   {{
-    "question": "What is ...?",
-    "options": ["A", "B", "C", "D"],
+    "q": "Question?",
+    "options": {{
+        "A": "option1",
+        "B": "option2",
+        "C": "option3",
+        "D": "option4"
+    }},
     "answer": "A"
   }}
 ]
@@ -141,180 +53,33 @@ Chapter: {data.chapter}
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": prompt}],
+        messages=[{"role":"system","content":prompt}],
         max_tokens=1500
     )
 
-    content = res.choices[0].message.content.strip()
+    content = res.choices[0].message.content
+    content = content.replace("```json","").replace("```","").strip()
 
-    # clean markdown
-    content = content.replace("```json", "").replace("```", "").strip()
+    return json.loads(content)
 
-    try:
-        parsed = json.loads(content)
 
-        return {
-            "status": "success",
-            "questions": parsed   # ✅ FIXED STRUCTURE
-        }
-
-    except Exception:
-        return {
-            "status": "error",
-            "raw": content
-        }
-
-# ================= MCQ EVALUATE (FIXED SCORE BUG) =================
-@app.post("/mock-test-evaluate")
-def evaluate(data: MockSubmit):
+@app.post("/submit-test")
+def submit(data: Submit):
 
     correct = 0
-    total = len(data.questions)
 
-    for i in range(total):
+    for i in range(len(data.questions)):
 
-        user_ans = data.answers[i].strip()
-        correct_ans = data.questions[i]["answer"].strip()
-
-        # ✅ FIX: only first letter compare
-        if user_ans[0].upper() == correct_ans[0].upper():
+        if data.answers[i] == data.questions[i]["answer"]:
             correct += 1
 
-    score = round((correct / total) * 100, 2)
-
-    prediction = score
-
-    if model:
-        features = np.array([[
-            data.chapters_done,
-            data.revision_count,
-            data.attendance,
-            score
-        ]])
-
-        prediction = round(float(model.predict(features)[0]), 2)
-
-    performance = (
-        "Excellent 🚀" if prediction >= 85 else
-        "Good 👍" if prediction >= 60 else
-        "Needs Improvement 📚" if prediction >= 40 else
-        "Critical ⚠"
-    )
+    score = round((correct / len(data.questions)) * 100, 2)
 
     return {
         "score": score,
-        "predicted_marks": prediction,
-        "performance": performance
+        "correct": correct,
+        "total": len(data.questions)
     }
-
-# ================= PREDICT =================
-@app.post("/predict-exam")
-def predict(data: PredictorInput):
-
-    if not model:
-        return {"status": "error", "message": "Model not loaded"}
-
-    features = np.array([[
-        data.chapters_done,
-        data.revision_count,
-        data.attendance,
-        data.test_score
-    ]])
-
-    prediction = round(float(model.predict(features)[0]), 2)
-
-    performance = (
-        "Excellent 🚀" if prediction >= 85 else
-        "Good 👍" if prediction >= 60 else
-        "Needs Improvement 📚" if prediction >= 40 else
-        "Critical ⚠"
-    )
-
-    return {
-        "predicted_marks": prediction,
-        "performance": performance,
-        "status": "success"
-    }
-
-# ================= SAVE =================
-@app.post("/save-chapter")
-def save(data: LearnRequest):
-
-    conn = get_conn()
-    cur = conn.cursor()
-
-    cur.execute("""
-        INSERT INTO chapters (student_name, student_class, subject, chapter)
-        VALUES (%s,%s,%s,%s)
-    """, (
-        data.student_name,
-        data.student_class,
-        data.subject,
-        data.chapter
-    ))
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return {"message": "saved"}
-
-# ================= LEADERBOARD =================
-@app.get("/leaderboard")
-def leaderboard():
-
-    conn = get_conn()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT student_name, COUNT(*)
-        FROM chapters
-        GROUP BY student_name
-        ORDER BY COUNT(*) DESC
-        LIMIT 10
-    """)
-
-    rows = cur.fetchall()
-
-    return {
-        "leaderboard": [
-            {"name": r[0], "xp": r[1] * 10}
-            for r in rows
-        ]
-    }
-
-# ================= QUICK ACCESS =================
-@app.get("/quick-access")
-def quick():
-
-    conn = get_conn()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT subject, chapter
-        FROM chapters
-        LIMIT 10
-    """)
-
-    rows = cur.fetchall()
-
-    return {
-        "quick_access": [
-            {"subject": r[0], "chapter": r[1]}
-            for r in rows
-        ]
-    }
-
-# ================= MEME =================
-@app.post("/meme")
-def meme(data: ChatInput):
-    return {"meme": f"When you study {data.message} but brain sleeps 😴"}
-
-# ================= SHARE =================
-@app.post("/share")
-def share():
-    return {"bonus_xp": 5, "message": "Shared 🚀"}
-
 
     
     
