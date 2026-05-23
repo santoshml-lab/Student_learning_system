@@ -218,7 +218,7 @@ Chapter: {data.chapter}
 
         return {
             "status":"success",
-            "test": parsed
+            "questions": parsed
         }
 
     except Exception as e:
@@ -237,7 +237,11 @@ def evaluate(data: MockSubmit):
 
     for i in range(len(data.questions)):
 
-        if data.answers[i] == data.questions[i]["answer"]:
+        selected = data.answers[i].strip()
+
+        correct_answer = data.questions[i]["answer"].strip()
+
+        if selected.startswith(correct_answer):
             correct += 1
 
     score = round(
