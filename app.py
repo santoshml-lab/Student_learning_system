@@ -58,14 +58,28 @@ class MockSubmit(BaseModel):
 def home():
     return {"status": "ExamPanic AI Running 🚀"}
 
-# ================= LESSON =================
+# ================= LESSON (UPGRADED) =================
 @app.post("/learn")
 def learn(data: LearnRequest):
 
-    prompt = f"""
-You are ICSE expert teacher.
+    level = data.student_class
 
-Format:
+    if level in ["1","2","3","4","5"]:
+        instruction = "Explain in very simple storytelling language for kids."
+
+    elif level in ["6","7","8"]:
+        instruction = "Explain in simple concept + examples format."
+
+    else:
+        instruction = "Explain in detailed exam-oriented ICSE format."
+
+    prompt = f"""
+You are an ICSE expert teacher AI.
+
+IMPORTANT RULE:
+{instruction}
+
+FORMAT:
 📘 Title
 📌 Definition
 📖 Explanation
@@ -84,7 +98,10 @@ Chapter: {data.chapter}
         max_tokens=2000
     )
 
-    return {"lesson": res.choices[0].message.content}
+    return {
+        "status": "success",
+        "lesson": res.choices[0].message.content
+    }
 
 # ================= CHAT =================
 @app.post("/chat")
@@ -213,27 +230,27 @@ def predict(data: PredictorInput):
         "performance": performance
     }
 
-# ================= NOTES (CLASS LEVEL UPGRADED) =================
+# ================= NOTES (CLASS BASED SMART) =================
 @app.post("/generate-notes")
 def notes(data: LearnRequest):
 
     level = data.student_class
 
     if level in ["1","2","3","4","5"]:
-        instruction = "Use very simple language with daily life examples."
+        instruction = "Use very simple language with storytelling and daily life examples."
 
     elif level in ["6","7","8"]:
-        instruction = "Use medium explanation with basic concepts."
+        instruction = "Use medium level explanation with concepts and examples."
 
     else:
-        instruction = "Use exam-oriented advanced notes with key points and revision focus."
+        instruction = "Use advanced exam-oriented ICSE notes with revision focus."
 
     prompt = f"""
-You are an expert teacher.
+You are an expert ICSE teacher.
 
-Generate STUDY NOTES.
+Generate HIGH QUALITY NOTES.
 
-RULES:
+RULE:
 {instruction}
 
 FORMAT:
