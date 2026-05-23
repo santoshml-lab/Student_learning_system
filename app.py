@@ -1,5 +1,4 @@
-
- from fastapi import FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
@@ -259,5 +258,5 @@ Chapter: {data.chapter}
     return {
         "status": "success",
         "notes": res.choices[0].message.content
-    }   
+    }
     
