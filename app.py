@@ -3,45 +3,146 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
-import json
 import os
+import json
+import numpy as np
+import joblib
 
+# ================= APP =================
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
+# ================= AI CLIENT =================
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+# ================= ML MODEL =================
+model = None
+try:
+    model = joblib.load("exam_predictor.pkl")
+    print("✅ Model loaded")
+except:
+    print("⚠ Model not found")
+
+# ================= MODELS =================
+
+class LearnRequest(BaseModel):
+    student_name: str
+    student_class: str
+    subject: str
+    chapter: str
+
+class ChatInput(BaseModel):
+    message: str
+
+class PredictorInput(BaseModel):
+    chapters_done: int
+    revision_count: int
+    attendance: int
+    test_score: int
 
 class MockRequest(BaseModel):
     student_class: str
     subject: str
     chapter: str
 
-class Submit(BaseModel):
+class MockSubmit(BaseModel):
     questions: list
     answers: list
 
-@app.post("/generate-test")
+# ================= HOME =================
+@app.get("/")
+def home():
+    return {"status": "ExamPanic AI Running 🚀"}
+
+# ================= LESSON =================
+@app.post("/learn")
+def learn(data: LearnRequest):
+
+    prompt = f"""
+You are ICSE expert teacher.
+
+Format:
+📘 Title
+📌 Definition
+📖 Explanation
+🧠 Examples
+⭐ Key Points
+📝 Questions
+
+Class: {data.student_class}
+Subject: {data.subject}
+Chapter: {data.chapter}
+"""
+
+    res = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role":"system","content":prompt}],
+        max_tokens=2000
+    )
+
+    return {"lesson": res.choices[0].message.content}
+
+# ================= CHAT =================
+@app.post("/chat")
+def chat(data: ChatInput):
+
+    res = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {"role":"system","content":"You are ICSE tutor"},
+            {"role":"user","content":data.message}
+        ],
+        max_tokens=1000
+    )
+
+    return {"reply": res.choices[0].message.content}
+
+# ================= PREDICT =================
+@app.post("/predict-exam")
+def predict(data: PredictorInput):
+
+    if not model:
+        return {"status":"error","message":"Model not loaded"}
+
+    features = np.array([[
+        data.chapters_done,
+        data.revision_count,
+        data.attendance,
+        data.test_score
+    ]])
+
+    prediction = round(float(model.predict(features)[0]), 2)
+
+    performance = (
+        "Excellent 🚀" if prediction >= 85 else
+        "Good 👍" if prediction >= 60 else
+        "Needs Improvement 📚" if prediction >= 40 else
+        "Critical ⚠"
+    )
+
+    return {
+        "predicted_marks": prediction,
+        "performance": performance
+    }
+
+# ================= MCQ GENERATE =================
+@app.post("/mock-test-generate")
 def generate_test(data: MockRequest):
 
     prompt = f"""
 Generate 5 MCQs STRICT JSON ONLY.
 
-FORMAT:
+Format:
 [
   {{
-    "q": "Question?",
-    "options": {{
-        "A": "option1",
-        "B": "option2",
-        "C": "option3",
-        "D": "option4"
-    }},
+    "question": "...",
+    "options": ["A","B","C","D"],
     "answer": "A"
   }}
 ]
@@ -58,19 +159,31 @@ Chapter: {data.chapter}
     )
 
     content = res.choices[0].message.content
+
     content = content.replace("```json","").replace("```","").strip()
 
-    return json.loads(content)
+    try:
+        return {
+            "questions": json.loads(content)
+        }
+    except:
+        return {
+            "questions": [],
+            "raw": content
+        }
 
-
-@app.post("/submit-test")
-def submit(data: Submit):
+# ================= MCQ EVALUATE =================
+@app.post("/mock-test-evaluate")
+def evaluate(data: MockSubmit):
 
     correct = 0
 
     for i in range(len(data.questions)):
 
-        if data.answers[i] == data.questions[i]["answer"]:
+        user_ans = str(data.answers[i]).strip().upper()
+        correct_ans = str(data.questions[i]["answer"]).strip().upper()
+
+        if user_ans == correct_ans:
             correct += 1
 
     score = round((correct / len(data.questions)) * 100, 2)
@@ -81,5 +194,24 @@ def submit(data: Submit):
         "total": len(data.questions)
     }
 
+# ================= NOTES =================
+@app.post("/generate-notes")
+def notes(data: LearnRequest):
+
+    prompt = f"""
+Make exam notes:
+
+Class: {data.student_class}
+Subject: {data.subject}
+Chapter: {data.chapter}
+"""
+
+    res = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role":"system","content":prompt}],
+        max_tokens=1200
+    )
+
+    return {"notes": res.choices[0].message.content}
     
     
