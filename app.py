@@ -8,6 +8,7 @@ import joblib
 import numpy as np
 import os
 import io
+import json
 
 # ================= APP =================
 app = FastAPI()
@@ -23,24 +24,34 @@ app.add_middleware(
 # ================= AI CLIENT =================
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# ================= DB =================
+# ================= DATABASE =================
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgres://",
+        "postgresql://",
+        1
+    )
 
 def get_conn():
-    return psycopg2.connect(DATABASE_URL, sslmode="require")
+    return psycopg2.connect(
+        DATABASE_URL,
+        sslmode="require"
+    )
 
-# ================= MODEL =================
+# ================= ML MODEL =================
 model = None
+
 try:
     model = joblib.load("exam_predictor.pkl")
-    print("✅ Model loaded")
-except:
-    print("❌ Model not found")
+    print("✅ ML Model Loaded")
+
+except Exception as e:
+    print("❌ Model Error:", e)
 
 # ================= MODELS =================
+
 class LearnRequest(BaseModel):
     student_name: str
     student_class: str
@@ -71,15 +82,19 @@ class MockSubmit(BaseModel):
 # ================= HOME =================
 @app.get("/")
 def home():
-    return {"status": "ExamPanic AI Running 🚀"}
 
-# ================= AI LEARN =================
+    return {
+        "status": "ExamPanic AI Running 🚀"
+    }
+
+# ================= AI LESSON =================
 @app.post("/learn")
 def learn(data: LearnRequest):
 
     prompt = f"""
-ICSE Expert Teacher Format:
+You are an ICSE expert teacher.
 
+Format:
 📘 Title
 📌 Definition
 📖 Explanation
@@ -94,11 +109,18 @@ Chapter: {data.chapter}
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": prompt}],
+        messages=[
+            {
+                "role":"system",
+                "content":prompt
+            }
+        ],
         max_tokens=2000
     )
 
-    return {"lesson": res.choices[0].message.content}
+    return {
+        "lesson": res.choices[0].message.content
+    }
 
 # ================= CHAT =================
 @app.post("/chat")
@@ -107,20 +129,28 @@ def chat(data: ChatInput):
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=[
-            {"role": "system", "content": "You are ICSE tutor."},
-            {"role": "user", "content": data.message}
+            {
+                "role":"system",
+                "content":"You are helpful ICSE tutor."
+            },
+            {
+                "role":"user",
+                "content":data.message
+            }
         ],
         max_tokens=1000
     )
 
-    return {"reply": res.choices[0].message.content}
+    return {
+        "reply": res.choices[0].message.content
+    }
 
 # ================= NOTES =================
 @app.post("/generate-notes")
 def notes(data: LearnRequest):
 
     prompt = f"""
-Make exam-ready notes:
+Create exam-ready revision notes.
 
 Class: {data.student_class}
 Subject: {data.subject}
@@ -129,21 +159,35 @@ Chapter: {data.chapter}
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": prompt}],
+        messages=[
+            {
+                "role":"system",
+                "content":prompt
+            }
+        ],
         max_tokens=1200
     )
 
-    return {"notes": res.choices[0].message.content}
+    return {
+        "notes": res.choices[0].message.content
+    }
 
 # ================= MOCK TEST GENERATE =================
 @app.post("/mock-test-generate")
 def mock(data: MockRequest):
 
     prompt = f"""
-Generate 5 MCQs STRICT JSON:
+Generate exactly 5 MCQs in STRICT JSON.
 
+Return ONLY JSON.
+
+Format:
 [
- {{"question":"","options":["A","B","C","D"],"answer":"A"}}
+ {{
+   "question":"What is...?",
+   "options":["A","B","C","D"],
+   "answer":"A"
+ }}
 ]
 
 Class: {data.student_class}
@@ -153,13 +197,37 @@ Chapter: {data.chapter}
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": prompt}],
+        messages=[
+            {
+                "role":"system",
+                "content":prompt
+            }
+        ],
         max_tokens=1500
     )
 
-    content = res.choices[0].message.content.replace("```json","").replace("```","")
+    content = res.choices[0].message.content.strip()
 
-    return {"test": content}
+    content = content.replace("```json","")
+    content = content.replace("```","")
+    content = content.strip()
+
+    try:
+
+        parsed = json.loads(content)
+
+        return {
+            "status":"success",
+            "test": parsed
+        }
+
+    except Exception as e:
+
+        return {
+            "status":"error",
+            "message":"Invalid JSON from AI",
+            "raw": content
+        }
 
 # ================= MOCK TEST EVALUATE =================
 @app.post("/mock-test-evaluate")
@@ -168,23 +236,44 @@ def evaluate(data: MockSubmit):
     correct = 0
 
     for i in range(len(data.questions)):
+
         if data.answers[i] == data.questions[i]["answer"]:
             correct += 1
 
-    score = (correct / len(data.questions)) * 100
+    score = round(
+        (correct / len(data.questions)) * 100,
+        2
+    )
+
+    prediction = score
 
     if model:
-        features = np.array([[data.chapters_done, data.revision_count, data.attendance, score]])
-        prediction = round(float(model.predict(features)[0]), 2)
-    else:
-        prediction = score
 
-    performance = (
-        "Excellent 🚀" if prediction >= 85 else
-        "Good 👍" if prediction >= 60 else
-        "Needs Improvement 📚" if prediction >= 40 else
-        "Critical ⚠"
-    )
+        features = np.array([[
+            data.chapters_done,
+            data.revision_count,
+            data.attendance,
+            score
+        ]])
+
+        prediction = round(
+            float(model.predict(features)[0]),
+            2
+        )
+
+    performance = "Average"
+
+    if prediction >= 85:
+        performance = "Excellent 🚀"
+
+    elif prediction >= 60:
+        performance = "Good 👍"
+
+    elif prediction >= 40:
+        performance = "Needs Improvement 📚"
+
+    else:
+        performance = "Critical ⚠"
 
     return {
         "score": score,
@@ -192,52 +281,78 @@ def evaluate(data: MockSubmit):
         "performance": performance
     }
 
-# ================= PREDICT =================
+# ================= PREDICT EXAM =================
 @app.post("/predict-exam")
 def predict(data: PredictorInput):
 
     if not model:
-        return {"status":"error","message":"Model not loaded"}
 
-    features = np.array([[data.chapters_done, data.revision_count, data.attendance, data.test_score]])
+        return {
+            "status":"error",
+            "message":"ML model not loaded"
+        }
 
-    prediction = round(float(model.predict(features)[0]), 2)
+    features = np.array([[
+        data.chapters_done,
+        data.revision_count,
+        data.attendance,
+        data.test_score
+    ]])
 
-    performance = (
-        "Excellent 🚀" if prediction >= 85 else
-        "Good 👍" if prediction >= 60 else
-        "Needs Improvement 📚" if prediction >= 40 else
-        "Critical ⚠"
+    prediction = round(
+        float(model.predict(features)[0]),
+        2
     )
+
+    performance = "Average"
+
+    if prediction >= 85:
+        performance = "Excellent 🚀"
+
+    elif prediction >= 60:
+        performance = "Good 👍"
+
+    elif prediction >= 40:
+        performance = "Needs Improvement 📚"
+
+    else:
+        performance = "Critical ⚠"
 
     return {
         "predicted_marks": prediction,
         "performance": performance,
-        "status": "success"
+        "status":"success"
     }
 
-# ================= SAVE =================
+# ================= SAVE CHAPTER =================
 @app.post("/save-chapter")
 def save(data: LearnRequest):
 
     conn = get_conn()
     cur = conn.cursor()
 
-    cur.execute("""
-        INSERT INTO chapters (student_name, student_class, subject, chapter)
+    cur.execute(
+        """
+        INSERT INTO chapters
+        (student_name, student_class, subject, chapter)
         VALUES (%s,%s,%s,%s)
-    """, (
-        data.student_name,
-        data.student_class,
-        data.subject,
-        data.chapter
-    ))
+        """,
+        (
+            data.student_name,
+            data.student_class,
+            data.subject,
+            data.chapter
+        )
+    )
 
     conn.commit()
+
     cur.close()
     conn.close()
 
-    return {"message": "saved"}
+    return {
+        "message":"saved"
+    }
 
 # ================= LEADERBOARD =================
 @app.get("/leaderboard")
@@ -256,9 +371,15 @@ def leaderboard():
 
     rows = cur.fetchall()
 
+    cur.close()
+    conn.close()
+
     return {
-        "leaderboard": [
-            {"name": r[0], "xp": r[1]*10}
+        "leaderboard":[
+            {
+                "name":r[0],
+                "xp":r[1]*10
+            }
             for r in rows
         ]
     }
@@ -270,12 +391,23 @@ def quick():
     conn = get_conn()
     cur = conn.cursor()
 
-    cur.execute("SELECT subject, chapter FROM chapters LIMIT 10")
+    cur.execute("""
+        SELECT subject, chapter
+        FROM chapters
+        LIMIT 10
+    """)
+
     rows = cur.fetchall()
 
+    cur.close()
+    conn.close()
+
     return {
-        "quick_access": [
-            {"subject": r[0], "chapter": r[1]}
+        "quick_access":[
+            {
+                "subject":r[0],
+                "chapter":r[1]
+            }
             for r in rows
         ]
     }
@@ -283,12 +415,20 @@ def quick():
 # ================= MEME =================
 @app.post("/meme")
 def meme(data: ChatInput):
-    return {"meme": f"When you study {data.message} but brain sleeps 😴"}
+
+    return {
+        "meme":
+        f"When you study {data.message} but brain says sleep 😴"
+    }
 
 # ================= SHARE =================
 @app.post("/share")
 def share():
-    return {"bonus_xp": 5, "message": "Shared 🚀"}
+
+    return {
+        "bonus_xp":5,
+        "message":"Shared Successfully 🚀"
+    }
 
 
     
