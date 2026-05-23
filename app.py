@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+
+ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
@@ -146,7 +147,7 @@ Chapter: {data.chapter}
             "raw": content
         }
 
-# ================= MCQ EVALUATE (FIXED CORE BUG) =================
+# ================= MCQ EVALUATE =================
 @app.post("/mock-test-evaluate")
 def evaluate(data: MockSubmit):
 
@@ -159,8 +160,9 @@ def evaluate(data: MockSubmit):
         }
 
     correct = 0
+    total = len(data.questions)
 
-    for i in range(len(data.questions)):
+    for i in range(total):
 
         if i >= len(data.answers):
             continue
@@ -171,14 +173,17 @@ def evaluate(data: MockSubmit):
         if user_ans == correct_ans:
             correct += 1
 
-    total = len(data.questions)
-
-    score = round((correct / total) * 100, 2) if total > 0 else 0
+    score = round((correct / total) * 100, 2)
 
     return {
         "score": score,
         "correct": correct,
-        "total": total
+        "total": total,
+        "performance":
+            "Excellent 🚀" if score >= 85 else
+            "Good 👍" if score >= 60 else
+            "Needs Improvement 📚" if score >= 40 else
+            "Critical ⚠"
     }
 
 # ================= PREDICT =================
@@ -209,12 +214,36 @@ def predict(data: PredictorInput):
         "performance": performance
     }
 
-# ================= NOTES =================
+# ================= NOTES (CLASS LEVEL UPGRADED) =================
 @app.post("/generate-notes")
 def notes(data: LearnRequest):
 
+    level = data.student_class
+
+    if level in ["1","2","3","4","5"]:
+        instruction = "Use very simple language with daily life examples."
+
+    elif level in ["6","7","8"]:
+        instruction = "Use medium explanation with basic concepts."
+
+    else:
+        instruction = "Use exam-oriented advanced notes with key points and revision focus."
+
     prompt = f"""
-Make exam notes:
+You are an expert teacher.
+
+Generate STUDY NOTES.
+
+RULES:
+{instruction}
+
+FORMAT:
+📘 Title
+📌 Definition
+📖 Explanation
+⭐ Important Points
+🧠 Memory Tricks
+📝 Questions
 
 Class: {data.student_class}
 Subject: {data.subject}
@@ -227,6 +256,8 @@ Chapter: {data.chapter}
         max_tokens=1200
     )
 
-    return {"notes": res.choices[0].message.content}
-    
+    return {
+        "status": "success",
+        "notes": res.choices[0].message.content
+    }   
     
