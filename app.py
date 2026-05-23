@@ -58,34 +58,45 @@ class MockSubmit(BaseModel):
 def home():
     return {"status": "ExamPanic AI Running 🚀"}
 
-# ================= LESSON (UPGRADED) =================
+# ================= LESSON (🔥 PW 4-STEP UPGRADE) =================
 @app.post("/learn")
 def learn(data: LearnRequest):
 
     level = data.student_class
 
     if level in ["1","2","3","4","5"]:
-        instruction = "Explain in very simple storytelling language for kids."
+        instruction = "Teach like a story for kids with very simple words."
 
     elif level in ["6","7","8"]:
-        instruction = "Explain in simple concept + examples format."
+        instruction = "Teach with simple concept + examples."
 
     else:
-        instruction = "Explain in detailed exam-oriented ICSE format."
+        instruction = "Teach in exam-oriented ICSE advanced format."
 
     prompt = f"""
-You are an ICSE expert teacher AI.
+You are an ICSE expert AI teacher.
 
-IMPORTANT RULE:
+RULE:
 {instruction}
+
+🚀 TEACH IN 4 STEPS ONLY:
+
+STEP 1: Concept Explanation
+STEP 2: Simple Real Life Example
+STEP 3: Ask Student Question (check understanding)
+STEP 4: Quick Revision Summary
+
+IMPORTANT:
+- Keep interactive tone
+- After STEP 3 ask: "Do you want next topic or more examples?"
 
 FORMAT:
 📘 Title
 📌 Definition
 📖 Explanation
-🧠 Examples
-⭐ Key Points
-📝 Questions
+🧠 Example
+❓ Question
+⭐ Revision
 
 Class: {data.student_class}
 Subject: {data.subject}
@@ -230,7 +241,7 @@ def predict(data: PredictorInput):
         "performance": performance
     }
 
-# ================= NOTES (CLASS BASED SMART) =================
+# ================= NOTES =================
 @app.post("/generate-notes")
 def notes(data: LearnRequest):
 
