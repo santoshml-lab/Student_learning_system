@@ -67,35 +67,50 @@ def home():
     return {"status": "ExamPanic AI Running 🚀"}
 
 
-# ================= LESSON =================
+# ================= LEARN (SMART TUTOR ENGINE) =================
 @app.post("/learn")
 def learn(data: LearnRequest):
 
     level = data.student_class
 
     if level in ["1","2","3","4","5"]:
-        instruction = "Teach like a story for kids."
+        instruction = "Teach like a fun story for a child with imagination."
     elif level in ["6","7","8"]:
-        instruction = "Teach with simple concepts and examples."
+        instruction = "Teach with concepts + real life examples."
     else:
-        instruction = "Teach in advanced ICSE exam format."
+        instruction = "Teach like ICSE expert teacher with deep clarity."
 
-    lang_rule = "Write in Hindi" if data.language.lower() == "hindi" else "Write in English"
+    lang_rule = "Write ONLY in Hindi" if data.language.lower() == "hindi" else "Write ONLY in English"
 
     prompt = f"""
-You are an ICSE expert teacher AI.
+You are a MASTER AI TUTOR (like top coaching institute teacher).
 
-RULE:
+GOAL:
+Build deep understanding, not memorization.
+
 {instruction}
 
-LANGUAGE:
 {lang_rule}
 
-🚀 TEACH IN 4 STEPS ONLY:
-1. Concept
-2. Example
-3. Question
-4. Revision
+🚀 STRICT 4 STEP FLOW:
+1. Concept (very clear foundation)
+2. Real Life Example
+3. Thinking Question (student must answer)
+4. Revision (exam ready points)
+
+RULES:
+- If student asks "more examples" → ONLY examples
+- If student asks "next topic" → ONLY next concept
+- Always end with a question
+- Never repeat full lesson again
+
+FORMAT:
+📘 Title
+📌 Concept
+📖 Explanation
+🧠 Example
+❓ Question
+⭐ Revision
 
 Class: {data.student_class}
 Subject: {data.subject}
@@ -104,7 +119,7 @@ Chapter: {data.chapter}
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role":"system","content":prompt}],
+        messages=[{"role": "system", "content": prompt}],
         max_tokens=2000
     )
 
@@ -114,33 +129,44 @@ Chapter: {data.chapter}
     }
 
 
-# ================= CHAT =================
+# ================= CHAT (SMART ICSE TUTOR) =================
 @app.post("/chat")
 def chat(data: ChatInput):
 
     prompt = f"""
-You are ICSE tutor.
+You are ExamPanic AI ICSE tutor.
 
-Explain step by step with example.
+RULES:
+- Step by step explanation
+- Simple language
+- Real life examples
+- End with small question
 
-User: {data.message}
+FORMAT:
+📌 Explanation
+🧠 Example
+⭐ Key Point
+❓ Question
+
+User Query:
+{data.message}
 """
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role":"system","content":prompt}],
-        max_tokens=1000
+        messages=[{"role": "system", "content": prompt}],
+        max_tokens=1200
     )
 
-    return {"reply": res.choices[0].message.content}
+    return {"status": "success", "reply": res.choices[0].message.content}
 
 
-# ================= MCQ =================
+# ================= MCQ GENERATION =================
 @app.post("/mock-test-generate")
 def generate_test(data: MockRequest):
 
     prompt = f"""
-Generate 5 MCQs JSON ONLY.
+Generate 5 ICSE MCQs STRICT JSON ONLY.
 
 [
   {{
@@ -150,6 +176,10 @@ Generate 5 MCQs JSON ONLY.
   }}
 ]
 
+Rules:
+- Mix easy + medium level
+- Only one correct answer
+
 Class: {data.student_class}
 Subject: {data.subject}
 Chapter: {data.chapter}
@@ -157,11 +187,11 @@ Chapter: {data.chapter}
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role":"system","content":prompt}],
+        messages=[{"role": "system", "content": prompt}],
         max_tokens=1500
     )
 
-    content = res.choices[0].message.content.replace("```json","").replace("```","").strip()
+    content = res.choices[0].message.content.replace("```json", "").replace("```", "").strip()
 
     try:
         return {
@@ -176,22 +206,22 @@ Chapter: {data.chapter}
         }
 
 
-# ================= MCQ EVALUATE =================
+# ================= MCQ EVALUATION =================
 @app.post("/mock-test-evaluate")
 def evaluate(data: MockSubmit):
 
     if not data.questions:
-        return {"score":0,"correct":0,"total":0,"performance":"No Questions"}
+        return {"score": 0, "correct": 0, "total": 0, "performance": "No Questions"}
 
     correct = 0
     total = len(data.questions)
 
     for i in range(total):
         if i < len(data.answers):
-            if str(data.answers[i]).upper() == str(data.questions[i]["answer"]).upper():
+            if str(data.answers[i]).strip().upper() == str(data.questions[i]["answer"]).strip().upper():
                 correct += 1
 
-    score = round((correct/total)*100,2)
+    score = round((correct / total) * 100, 2)
 
     return {
         "score": score,
@@ -205,12 +235,12 @@ def evaluate(data: MockSubmit):
     }
 
 
-# ================= PREDICT =================
+# ================= EXAM PREDICTION =================
 @app.post("/predict-exam")
 def predict(data: PredictorInput):
 
     if not model:
-        return {"status":"error","message":"Model not loaded"}
+        return {"status": "error", "message": "Model not loaded"}
 
     features = np.array([[
         data.chapters_done,
@@ -219,7 +249,7 @@ def predict(data: PredictorInput):
         data.test_score
     ]])
 
-    prediction = round(float(model.predict(features)[0]),2)
+    prediction = round(float(model.predict(features)[0]), 2)
 
     return {
         "predicted_marks": prediction,
@@ -231,31 +261,43 @@ def predict(data: PredictorInput):
     }
 
 
-# ================= NOTES =================
+# ================= NOTES (SMART STUDY ENGINE) =================
 @app.post("/generate-notes")
 def notes(data: LearnRequest):
 
     level = data.student_class
 
     if level in ["1","2","3","4","5"]:
-        instruction = "Use simple storytelling language."
+        instruction = "Use storytelling + very simple explanation."
     elif level in ["6","7","8"]:
-        instruction = "Use medium explanation with examples."
+        instruction = "Use concept + examples + revision format."
     else:
-        instruction = "Use advanced ICSE notes."
+        instruction = "Use advanced ICSE exam notes."
 
-    lang_rule = "Write in Hindi" if data.language.lower() == "hindi" else "Write in English"
+    lang_rule = "Write ONLY in Hindi" if data.language.lower() == "hindi" else "Write ONLY in English"
 
     prompt = f"""
-You are ICSE teacher.
+You are ICSE NOTES AI.
 
-RULE:
+GOAL:
+Create exam-ready revision notes.
+
 {instruction}
 
-LANGUAGE:
 {lang_rule}
 
-Generate notes in exam format.
+FORMAT:
+📘 Title
+📌 Definition
+📖 Explanation
+⭐ Important Points
+🧠 Memory Tricks
+📝 Questions
+
+Rules:
+- Clean structured notes
+- No extra fluff
+- Exam focused
 
 Class: {data.student_class}
 Subject: {data.subject}
@@ -264,7 +306,7 @@ Chapter: {data.chapter}
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role":"system","content":prompt}],
+        messages=[{"role": "system", "content": prompt}],
         max_tokens=1200
     )
 
