@@ -89,6 +89,9 @@ STEP 4: Quick Revision Summary
 IMPORTANT:
 - Keep interactive tone
 - After STEP 3 ask: "Do you want next topic or more examples?"
+- If user asks more examples, ONLY give examples
+- If user asks next topic, ONLY continue next concept
+- Never regenerate full lesson again
 
 FORMAT:
 📘 Title
@@ -114,20 +117,47 @@ Chapter: {data.chapter}
         "lesson": res.choices[0].message.content
     }
 
-# ================= CHAT =================
+# ================= CHAT (🔥 UPGRADED) =================
 @app.post("/chat")
 def chat(data: ChatInput):
+
+    prompt = f"""
+You are ExamPanic AI.
+
+You are a friendly ICSE AI tutor.
+
+RULES:
+- Explain according to student level
+- Use simple language
+- Be interactive
+- Solve doubts step-by-step
+- Use examples
+- If concept is difficult, simplify it
+- Keep answer clean and readable
+- Ask short understanding question at end
+
+FORMAT:
+📌 Explanation
+🧠 Example
+⭐ Key Point
+❓ Small Question
+
+Student Question:
+{data.message}
+"""
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=[
-            {"role":"system","content":"You are ICSE tutor"},
-            {"role":"user","content":data.message}
+            {"role":"system","content":prompt}
         ],
-        max_tokens=1000
+        max_tokens=1200
     )
 
-    return {"reply": res.choices[0].message.content}
+    return {
+        "status": "success",
+        "reply": res.choices[0].message.content
+    }
 
 # ================= MCQ GENERATE =================
 @app.post("/mock-test-generate")
