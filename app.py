@@ -34,6 +34,7 @@ class LearnRequest(BaseModel):
     student_class: str
     subject: str
     chapter: str
+    language: str = "english"
 
 class ChatInput(BaseModel):
     message: str
@@ -58,24 +59,48 @@ class MockSubmit(BaseModel):
 def home():
     return {"status": "ExamPanic AI Running 🚀"}
 
-# ================= LESSON (🔥 PW 4-STEP UPGRADE) =================
+# ================= LESSON (🔥 PW 4-STEP + HINDI/ENGLISH) =================
 @app.post("/learn")
 def learn(data: LearnRequest):
 
     level = data.student_class
 
+    # ================= CLASS LEVEL =================
     if level in ["1","2","3","4","5"]:
         instruction = "Teach like a story for kids with very simple words."
+
     elif level in ["6","7","8"]:
         instruction = "Teach with simple concept + examples."
+
     else:
         instruction = "Teach in exam-oriented ICSE advanced format."
+
+    # ================= LANGUAGE MODE =================
+    if data.language.lower() == "hindi":
+
+        language_instruction = """
+Explain fully in simple Hindi language.
+Use Hindi examples.
+Use Hindi explanations.
+Keep language easy for students.
+"""
+
+    else:
+
+        language_instruction = """
+Explain fully in English language.
+Use simple English.
+Keep explanation student friendly.
+"""
 
     prompt = f"""
 You are an ICSE expert AI teacher.
 
 RULE:
 {instruction}
+
+LANGUAGE RULE:
+{language_instruction}
 
 🚀 TEACH IN 4 STEPS ONLY:
 
@@ -86,7 +111,8 @@ STEP 4: Quick Revision Summary
 
 IMPORTANT:
 - Interactive tone
-- After STEP 3 ask: "Do you want next topic or more examples?"
+- After STEP 3 ask:
+"Do you want next topic or more examples?"
 - Never repeat full lesson again for small requests
 
 FORMAT:
@@ -265,8 +291,10 @@ def notes(data: LearnRequest):
 
     if level in ["1","2","3","4","5"]:
         instruction = "Use very simple language with storytelling."
+
     elif level in ["6","7","8"]:
         instruction = "Use medium level explanation with examples."
+
     else:
         instruction = "Use advanced exam-oriented ICSE notes."
 
