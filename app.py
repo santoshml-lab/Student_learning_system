@@ -66,10 +66,8 @@ def learn(data: LearnRequest):
 
     if level in ["1","2","3","4","5"]:
         instruction = "Teach like a story for kids with very simple words."
-
     elif level in ["6","7","8"]:
         instruction = "Teach with simple concept + examples."
-
     else:
         instruction = "Teach in exam-oriented ICSE advanced format."
 
@@ -87,11 +85,9 @@ STEP 3: Ask Student Question (check understanding)
 STEP 4: Quick Revision Summary
 
 IMPORTANT:
-- Keep interactive tone
+- Interactive tone
 - After STEP 3 ask: "Do you want next topic or more examples?"
-- If user asks more examples, ONLY give examples
-- If user asks next topic, ONLY continue next concept
-- Never regenerate full lesson again
+- Never repeat full lesson again for small requests
 
 FORMAT:
 📘 Title
@@ -117,40 +113,33 @@ Chapter: {data.chapter}
         "lesson": res.choices[0].message.content
     }
 
-# ================= CHAT (🔥 UPGRADED) =================
+# ================= CHAT (UPGRADED ICSE TUTOR) =================
 @app.post("/chat")
 def chat(data: ChatInput):
 
     prompt = f"""
-You are ExamPanic AI.
-
-You are a friendly ICSE AI tutor.
+You are ExamPanic AI, a friendly ICSE tutor.
 
 RULES:
-- Explain according to student level
+- Explain step by step
 - Use simple language
-- Be interactive
-- Solve doubts step-by-step
-- Use examples
-- If concept is difficult, simplify it
-- Keep answer clean and readable
-- Ask short understanding question at end
+- Give examples
+- Make it interactive
+- End with a small question
 
 FORMAT:
 📌 Explanation
 🧠 Example
 ⭐ Key Point
-❓ Small Question
+❓ Question
 
-Student Question:
+User Query:
 {data.message}
 """
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[
-            {"role":"system","content":prompt}
-        ],
+        messages=[{"role":"system","content":prompt}],
         max_tokens=1200
     )
 
@@ -159,12 +148,17 @@ Student Question:
         "reply": res.choices[0].message.content
     }
 
-# ================= MCQ GENERATE =================
+# ================= MCQ GENERATE (UPGRADED) =================
 @app.post("/mock-test-generate")
 def generate_test(data: MockRequest):
 
     prompt = f"""
 Generate 5 MCQs STRICT JSON ONLY.
+
+RULES:
+- ICSE exam level
+- Mix easy + medium questions
+- Only one correct answer
 
 FORMAT:
 [
@@ -196,8 +190,7 @@ Chapter: {data.chapter}
             "questions": questions
         }
 
-    except Exception as e:
-
+    except:
         return {
             "status": "error",
             "questions": [],
@@ -208,7 +201,7 @@ Chapter: {data.chapter}
 @app.post("/mock-test-evaluate")
 def evaluate(data: MockSubmit):
 
-    if not data.questions or len(data.questions) == 0:
+    if not data.questions:
         return {
             "score": 0,
             "correct": 0,
@@ -220,14 +213,10 @@ def evaluate(data: MockSubmit):
     total = len(data.questions)
 
     for i in range(total):
-
         if i >= len(data.answers):
             continue
 
-        user_ans = str(data.answers[i]).strip().upper()
-        correct_ans = str(data.questions[i]["answer"]).strip().upper()
-
-        if user_ans == correct_ans:
+        if str(data.answers[i]).strip().upper() == str(data.questions[i]["answer"]).strip().upper():
             correct += 1
 
     score = round((correct / total) * 100, 2)
@@ -259,35 +248,30 @@ def predict(data: PredictorInput):
 
     prediction = round(float(model.predict(features)[0]), 2)
 
-    performance = (
-        "Excellent 🚀" if prediction >= 85 else
-        "Good 👍" if prediction >= 60 else
-        "Needs Improvement 📚" if prediction >= 40 else
-        "Critical ⚠"
-    )
-
     return {
         "predicted_marks": prediction,
-        "performance": performance
+        "performance":
+            "Excellent 🚀" if prediction >= 85 else
+            "Good 👍" if prediction >= 60 else
+            "Needs Improvement 📚" if prediction >= 40 else
+            "Critical ⚠"
     }
 
-# ================= NOTES =================
+# ================= NOTES (CLASS BASED SMART) =================
 @app.post("/generate-notes")
 def notes(data: LearnRequest):
 
     level = data.student_class
 
     if level in ["1","2","3","4","5"]:
-        instruction = "Use very simple language with storytelling and daily life examples."
-
+        instruction = "Use very simple language with storytelling."
     elif level in ["6","7","8"]:
-        instruction = "Use medium level explanation with concepts and examples."
-
+        instruction = "Use medium level explanation with examples."
     else:
-        instruction = "Use advanced exam-oriented ICSE notes with revision focus."
+        instruction = "Use advanced exam-oriented ICSE notes."
 
     prompt = f"""
-You are an expert ICSE teacher.
+You are an ICSE teacher.
 
 Generate HIGH QUALITY NOTES.
 
