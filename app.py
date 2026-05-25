@@ -155,7 +155,7 @@ User Query:
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=[{"role": "system", "content": prompt}],
-        max_tokens=1200
+        max_tokens=5000
     )
 
     return {"status": "success", "reply": res.choices[0].message.content}
