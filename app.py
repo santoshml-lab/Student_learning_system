@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -67,60 +66,112 @@ def home():
     return {"status": "ExamPanic AI Running 🚀"}
 
 
-# ================= LEARN (SMART TUTOR ENGINE) =================
+# ================= LEARN (FINAL ADVANCED ENGINE) =================
 @app.post("/learn")
 def learn(data: LearnRequest):
 
     level = data.student_class
 
     if level in ["1","2","3","4","5"]:
-        instruction = "Teach like a fun story for a child with imagination."
+        instruction = """
+Teach like a fun storytelling teacher for children.
+Use imagination, simple words and playful examples.
+"""
     elif level in ["6","7","8"]:
-        instruction = "Teach with concepts + real life examples."
+        instruction = """
+Teach deeply with concepts, logic and real life examples.
+Build strong understanding step by step.
+"""
     else:
-        instruction = "Teach like ICSE expert teacher with deep clarity."
+        instruction = """
+Teach like an elite ICSE coaching teacher.
+Give deep conceptual clarity with exam-oriented explanation.
+"""
 
-    lang_rule = "Write ONLY in Hindi" if data.language.lower() == "hindi" else "Write ONLY in English"
+    lang_rule = (
+        "Write ONLY in Hindi"
+        if data.language.lower() == "hindi"
+        else "Write ONLY in English"
+    )
 
     prompt = f"""
-You are a MASTER AI TUTOR (like top coaching institute teacher).
+You are ExamPanic AI,
+a world-class ICSE AI Teacher.
 
-GOAL:
-Build deep understanding, not memorization.
+MAIN GOAL:
+Build DEEP UNDERSTANDING like a real textbook + expert teacher.
 
+IMPORTANT:
+- Never give short answers
+- Explain everything step by step
+- Teach like a classroom teacher
+- Make student feel interactive learning
+- Minimum 1200 words
+- Use beautiful formatting
+- Use headings and subheadings
+- Add deep explanation
+- Add examples
+- Add revision
+- Add thinking questions
+
+TEACHING STYLE:
 {instruction}
 
+LANGUAGE:
 {lang_rule}
 
-🚀 STRICT 4 STEP FLOW:
-1. Concept (very clear foundation)
-2. Real Life Example
-3. Thinking Question (student must answer)
-4. Revision (exam ready points)
+STRICT STRUCTURE:
+
+# 📘 Chapter Title
+
+# 📌 Introduction
+(Explain what this chapter is about)
+
+# 📖 Core Concepts
+(Deep explanation of all important concepts)
+
+# 🧠 Real Life Examples
+(Give practical examples)
+
+# ⭐ Important Points
+(Exam-oriented key points)
+
+# 🔥 Memory Tricks
+(Easy tricks for remembering)
+
+# ❓ Thinking Questions
+(Ask conceptual questions)
+
+# 📝 Quick Revision
+(Short revision notes)
+
+# 🚀 Final Summary
+(Complete chapter summary)
 
 RULES:
-- If student asks "more examples" → ONLY examples
-- If student asks "next topic" → ONLY next concept
-- Always end with a question
-- Never repeat full lesson again
-
-FORMAT:
-📘 Title
-📌 Concept
-📖 Explanation
-🧠 Example
-❓ Question
-⭐ Revision
+- Keep explanation very detailed
+- Avoid robotic answers
+- Avoid short summaries
+- Make content textbook quality
+- Use ICSE level depth
+- End with one student question
 
 Class: {data.student_class}
+
 Subject: {data.subject}
+
 Chapter: {data.chapter}
 """
 
     res = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": prompt}],
-        max_tokens=2000
+        messages=[
+            {
+                "role": "system",
+                "content": prompt
+            }
+        ],
+        max_tokens=4000
     )
 
     return {
@@ -261,7 +312,7 @@ def predict(data: PredictorInput):
     }
 
 
-# ================= NOTES (SMART STUDY ENGINE) =================
+# ================= NOTES =================
 @app.post("/generate-notes")
 def notes(data: LearnRequest):
 
