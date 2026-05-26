@@ -450,6 +450,152 @@ Chapter: {data.chapter}
         "notes": res.choices[0].message.content
 
     }
+    
+# ================= NUMERICAL PROBLEM SOLVER =================
+
+class NumericalRequest(BaseModel):
+    student_class: str
+    subject: str
+    topic: str
+    problem: str
+    language: str = "english"
+
+
+@app.post("/solve-numerical")
+def solve_numerical(data: NumericalRequest):
+
+    level = data.student_class
+
+    if level in ["1","2","3","4","5"]:
+
+        instruction = """
+Explain in very simple language.
+Use basic calculation steps.
+Teach slowly like a school teacher.
+"""
+
+    elif level in ["6","7","8"]:
+
+        instruction = """
+Explain concepts deeply with formulas and logic.
+Show step-by-step solving technique.
+Teach like smart coaching teacher.
+"""
+
+    else:
+
+        instruction = """
+Teach like elite ICSE numerical expert.
+Give full conceptual solving method,
+formula derivation,
+logic,
+short tricks,
+and exam-oriented solving techniques.
+"""
+
+    lang_rule = (
+
+        "Write ONLY in Hindi"
+
+        if data.language.lower() == "hindi"
+
+        else "Write ONLY in English"
+
+    )
+
+    prompt = f"""
+You are ExamPanic AI Numerical Solver,
+a world-class Physics, Chemistry and Maths teacher.
+
+MAIN GOAL:
+Teach students HOW to solve numerical problems step by step.
+
+IMPORTANT:
+- Never give short answers
+- Solve step by step
+- Explain every formula
+- Explain logic behind every step
+- Teach calculation techniques
+- Teach problem solving methods
+- Make student understand deeply
+- Add shortcuts and tricks
+- Add exam tips
+- Make explanation textbook quality
+
+TEACHING STYLE:
+{instruction}
+
+LANGUAGE:
+{lang_rule}
+
+STRICT STRUCTURE:
+
+# 📘 Problem Title
+
+# 📌 Given Data
+(List all given values)
+
+# 📖 Concept Used
+(Explain concept deeply)
+
+# 🧠 Formula Used
+(Explain formula and meaning)
+
+# 🔥 Step-by-Step Solution
+(Solve line by line)
+
+# ⚡ Short Trick
+(Fast solving trick)
+
+# ⭐ Final Answer
+(Highlight final answer clearly)
+
+# ❓ Similar Practice Question
+(Give one extra practice problem)
+
+# 🚀 Exam Tips
+(Important solving tips)
+
+RULES:
+- Explain deeply
+- Avoid robotic answers
+- Make solving method crystal clear
+- Use proper units
+- Keep formatting beautiful
+- Use textbook-level explanation
+
+Class: {data.student_class}
+
+Subject: {data.subject}
+
+Topic: {data.topic}
+
+Problem:
+{data.problem}
+"""
+
+    res = client.chat.completions.create(
+
+        model="llama-3.1-8b-instant",
+
+        messages=[
+            {
+                "role": "system",
+                "content": prompt
+            }
+        ],
+
+        max_tokens=4000
+    )
+
+    return {
+
+        "status": "success",
+
+        "solution": res.choices[0].message.content
+
+    }
+
 
 
     
