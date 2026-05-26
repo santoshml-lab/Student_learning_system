@@ -313,55 +313,146 @@ def predict(data: PredictorInput):
 
 
 # ================= NOTES =================
+# ================= NOTES (FINAL DEEP TEXTBOOK ENGINE) =================
 @app.post("/generate-notes")
 def notes(data: LearnRequest):
 
     level = data.student_class
 
     if level in ["1","2","3","4","5"]:
-        instruction = "Use storytelling + very simple explanation."
-    elif level in ["6","7","8"]:
-        instruction = "Use concept + examples + revision format."
-    else:
-        instruction = "Use advanced ICSE exam notes."
 
-    lang_rule = "Write ONLY in Hindi" if data.language.lower() == "hindi" else "Write ONLY in English"
+        instruction = """
+Use storytelling style with very simple language.
+Teach like a friendly school teacher.
+Use imagination and fun examples.
+"""
+
+    elif level in ["6","7","8"]:
+
+        instruction = """
+Teach with deep concepts, logic and examples.
+Build strong understanding step by step.
+Explain every important topic clearly.
+"""
+
+    else:
+
+        instruction = """
+Create elite ICSE textbook-quality notes.
+Use deep conceptual explanation with exam-oriented structure.
+Teach like a top coaching institute teacher.
+"""
+
+    lang_rule = (
+
+        "Write ONLY in Hindi"
+
+        if data.language.lower() == "hindi"
+
+        else "Write ONLY in English"
+
+    )
 
     prompt = f"""
-You are ICSE NOTES AI.
+You are ExamPanic AI Notes Generator,
+a world-class ICSE Notes Expert.
 
-GOAL:
-Create exam-ready revision notes.
+MAIN GOAL:
+Create ULTRA DETAILED textbook-style notes
+with deep conceptual understanding.
 
+IMPORTANT:
+- Never generate short notes
+- Minimum 1500+ words
+- Explain every important topic deeply
+- Use beautiful formatting
+- Use headings and subheadings
+- Add examples
+- Add conceptual clarity
+- Add revision material
+- Add exam-focused points
+- Add memory tricks
+- Add important questions
+- Make student fully understand the chapter
+
+TEACHING STYLE:
 {instruction}
 
+LANGUAGE:
 {lang_rule}
 
-FORMAT:
-📘 Title
-📌 Definition
-📖 Explanation
-⭐ Important Points
-🧠 Memory Tricks
-📝 Questions
+STRICT STRUCTURE:
 
-Rules:
-- Clean structured notes
-- No extra fluff
-- Exam focused
+# 📘 Chapter Title
+
+# 📌 Introduction
+(Explain the chapter overview deeply)
+
+# 📖 Core Concepts
+(Explain all important concepts in detail)
+
+# 🧠 Real Life Examples
+(Give practical examples)
+
+# ⭐ Important Exam Points
+(Important ICSE exam-oriented points)
+
+# 🔥 Memory Tricks
+(Easy remembering tricks)
+
+# 📚 Important Keywords / Formula
+(Important terms, formulas or definitions)
+
+# ❓ Important Questions
+(Possible exam questions)
+
+# 📝 Quick Revision Notes
+(Fast revision section)
+
+# 🚀 Final Summary
+(Complete chapter conclusion)
+
+RULES:
+- Make notes highly detailed
+- Avoid robotic writing
+- Avoid tiny summaries
+- Use textbook-level explanation
+- Make content educational + engaging
+- Use ICSE level depth
+- Keep formatting beautiful
+- Make notes revision-friendly
 
 Class: {data.student_class}
+
 Subject: {data.subject}
+
 Chapter: {data.chapter}
 """
 
     res = client.chat.completions.create(
+
         model="llama-3.1-8b-instant",
-        messages=[{"role": "system", "content": prompt}],
-        max_tokens=1200
+
+        messages=[
+            {
+                "role": "system",
+                "content": prompt
+            }
+        ],
+
+        max_tokens=4000
     )
 
     return {
+
         "status": "success",
+
         "notes": res.choices[0].message.content
+
     }
+
+
+    
+
+    
+    
