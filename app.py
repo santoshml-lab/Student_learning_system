@@ -600,9 +600,7 @@ Problem:
     chapter: str
     score: float
     mistakes: list = []
-    # ================= WEAKNESS ANALYZER =================
-
-@app.post("/analyze-weakness")
+    @app.post("/analyze-weakness")
 def analyze_weakness(data: WeaknessInput):
 
     prompt = f"""
@@ -654,6 +652,12 @@ Keep it practical and student-friendly.
         "status": "success",
         "analysis": res.choices[0].message.content
     }
+    
+
+
+
+
+    
     
 
 
