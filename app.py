@@ -654,6 +654,10 @@ Keep it practical and student-friendly.
         "status": "success",
         "analysis": res.choices[0].message.content
     }
+    
+
+
+
 
 
 
