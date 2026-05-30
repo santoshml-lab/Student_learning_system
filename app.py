@@ -595,7 +595,7 @@ Problem:
         "solution": res.choices[0].message.content
 
     }
-    ================= WEAKNESS ANALYZER =================
+    
 
 class WeaknessInput(BaseModel):
 subject: str
