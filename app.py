@@ -610,7 +610,8 @@ def analyze_weakness(data: WeaknessInput):
     prompt = f"""
 You are ExamPanic AI Weakness Analyzer.
 
-Analyze the student's performance.
+Your job is to identify the student's weak concepts
+and create a practical improvement plan.
 
 Subject:
 {data.subject}
@@ -624,21 +625,48 @@ Score:
 Mistakes:
 {data.mistakes}
 
-Return STRICTLY in this format:
+IMPORTANT RULES:
+
+- Give chapter-specific analysis
+- Give concept-specific weaknesses
+- Give revision points related ONLY to the chapter
+- Recommend practice questions based on mistakes
+- Do NOT recommend websites
+- Do NOT recommend YouTube channels
+- Do NOT recommend study groups
+- Do NOT give generic advice
+- Focus on improving the student's understanding
+- Keep recommendations practical
+
+STRICT FORMAT:
 
 # 🧠 Weak Areas
-(List weak concepts)
+(List weak concepts from the chapter)
 
 # 📚 What To Revise
-(List revision topics)
+(List exact topics to revise)
 
 # 🎯 Practice Recommendation
-(Give practice advice)
+(Give chapter-specific practice work)
 
 # 🚀 Improvement Plan
-(Step-by-step improvement plan)
+(Give a short day-wise improvement plan)
 
-Keep it practical and student-friendly.
+Example:
+
+If mistake = Friction
+
+Then:
+Revise:
+- Laws of Friction
+- Coefficient of Friction
+- Static vs Kinetic Friction
+
+Practice:
+- 5 Numerical Problems
+- 5 Conceptual Questions
+
+Return only the analysis.
 """
 
     res = client.chat.completions.create(
@@ -656,6 +684,16 @@ Keep it practical and student-friendly.
         "status": "success",
         "analysis": res.choices[0].message.content
     }
+    
+
+
+    
+    
+    
+
+
+   
+
 
 
     
