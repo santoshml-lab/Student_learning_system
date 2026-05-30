@@ -595,23 +595,22 @@ Problem:
         "solution": res.choices[0].message.content
 
     }
-    
+    # ================= WEAKNESS ANALYZER =================
 
 class WeaknessInput(BaseModel):
-subject: str
-chapter: str
-score: float
-mistakes: list = []
+    subject: str
+    chapter: str
+    score: float
+    mistakes: list = []
+
 
 @app.post("/analyze-weakness")
 def analyze_weakness(data: WeaknessInput):
 
-prompt = f"""
-
+    prompt = f"""
 You are ExamPanic AI Weakness Analyzer.
 
-Analyze the student's performance and identify
-the exact concepts where improvement is needed.
+Analyze the student's performance and identify the exact concepts where improvement is needed.
 
 Subject:
 {data.subject}
@@ -641,56 +640,49 @@ IMPORTANT RULES:
 
 STRICT FORMAT:
 
-🧠 Weak Areas
+# 🧠 Weak Areas
 
-(List weak concepts)
+# 📚 What To Revise
 
-📚 What To Revise
+# 🎯 Practice Recommendation
 
-(List exact revision topics)
+## MCQs
+Generate 5 MCQs
 
-🎯 Practice Recommendation
+## Short Questions
+Generate 3 short-answer questions
 
-MCQs
+## Numerical / Application Questions
+Generate 2 numerical or application-based questions if applicable
 
-(Generate 5 MCQs)
+# 🚀 Improvement Plan
 
-Short Questions
-
-(Generate 3 short-answer questions)
-
-Numerical / Application Questions
-
-(Generate 2 numerical or application-based questions if applicable)
-
-🚀 Improvement Plan
-
-(Create a short day-wise improvement plan)
+Create a short day-wise improvement plan.
 
 Return only the analysis.
 """
 
-res = client.chat.completions.create(
-    model="llama-3.1-8b-instant",
-    messages=[
-        {
-            "role": "system",
-            "content": prompt
-        }
-    ],
-    max_tokens=1800
-)
+    res = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {
+                "role": "system",
+                "content": prompt
+            }
+        ],
+        max_tokens=1800
+    )
 
-return {
-    "status": "success",
-    "analysis": res.choices[0].message.content
-}
-    
-
+    return {
+        "status": "success",
+        "analysis": res.choices[0].message.content
+    }
 
 
 
     
+
+
 
 
     
