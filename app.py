@@ -595,23 +595,23 @@ Problem:
         "solution": res.choices[0].message.content
 
     }
-    # ================= WEAKNESS ANALYZER =================
+    ================= WEAKNESS ANALYZER =================
 
 class WeaknessInput(BaseModel):
-    subject: str
-    chapter: str
-    score: float
-    mistakes: list = []
-
+subject: str
+chapter: str
+score: float
+mistakes: list = []
 
 @app.post("/analyze-weakness")
 def analyze_weakness(data: WeaknessInput):
 
-    prompt = f"""
+prompt = f"""
+
 You are ExamPanic AI Weakness Analyzer.
 
-Your job is to identify the student's weak concepts
-and create a practical improvement plan.
+Analyze the student's performance and identify
+the exact concepts where improvement is needed.
 
 Subject:
 {data.subject}
@@ -631,59 +631,65 @@ IMPORTANT RULES:
 - Give concept-specific weaknesses
 - Give revision points related ONLY to the chapter
 - Recommend practice questions based on mistakes
-- Do NOT recommend websites
-- Do NOT recommend YouTube channels
-- Do NOT recommend study groups
-- Do NOT give generic advice
-- Focus on improving the student's understanding
+- Never recommend websites
+- Never recommend YouTube channels
+- Never recommend study groups
+- Never recommend external resources
 - Keep recommendations practical
+- Focus on concept improvement
+- Use ICSE-style academic language
 
 STRICT FORMAT:
 
-# 🧠 Weak Areas
-(List weak concepts from the chapter)
+🧠 Weak Areas
 
-# 📚 What To Revise
-(List exact topics to revise)
+(List weak concepts)
 
-# 🎯 Practice Recommendation
-(Give chapter-specific practice work)
+📚 What To Revise
 
-# 🚀 Improvement Plan
-(Give a short day-wise improvement plan)
+(List exact revision topics)
 
-Example:
+🎯 Practice Recommendation
 
-If mistake = Friction
+MCQs
 
-Then:
-Revise:
-- Laws of Friction
-- Coefficient of Friction
-- Static vs Kinetic Friction
+(Generate 5 MCQs)
 
-Practice:
-- 5 Numerical Problems
-- 5 Conceptual Questions
+Short Questions
+
+(Generate 3 short-answer questions)
+
+Numerical / Application Questions
+
+(Generate 2 numerical or application-based questions if applicable)
+
+🚀 Improvement Plan
+
+(Create a short day-wise improvement plan)
 
 Return only the analysis.
 """
 
-    res = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[
-            {
-                "role": "system",
-                "content": prompt
-            }
-        ],
-        max_tokens=1200
-    )
+res = client.chat.completions.create(
+    model="llama-3.1-8b-instant",
+    messages=[
+        {
+            "role": "system",
+            "content": prompt
+        }
+    ],
+    max_tokens=1800
+)
 
-    return {
-        "status": "success",
-        "analysis": res.choices[0].message.content
-    }
+return {
+    "status": "success",
+    "analysis": res.choices[0].message.content
+}
+    
+
+
+
+
     
 
 
