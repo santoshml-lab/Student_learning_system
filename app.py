@@ -595,6 +595,67 @@ Problem:
         "solution": res.choices[0].message.content
 
     }
+    class WeaknessInput(BaseModel):
+    subject: str
+    chapter: str
+    score: float
+    mistakes: list = []
+    # ================= WEAKNESS ANALYZER =================
+
+@app.post("/analyze-weakness")
+def analyze_weakness(data: WeaknessInput):
+
+    prompt = f"""
+You are ExamPanic AI Weakness Analyzer.
+
+Analyze the student's performance.
+
+Subject:
+{data.subject}
+
+Chapter:
+{data.chapter}
+
+Score:
+{data.score}
+
+Mistakes:
+{data.mistakes}
+
+Return STRICTLY in this format:
+
+# 🧠 Weak Areas
+(List weak concepts)
+
+# 📚 What To Revise
+(List revision topics)
+
+# 🎯 Practice Recommendation
+(Give practice advice)
+
+# 🚀 Improvement Plan
+(Step-by-step improvement plan)
+
+Keep it practical and student-friendly.
+"""
+
+    res = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {
+                "role": "system",
+                "content": prompt
+            }
+        ],
+        max_tokens=1200
+    )
+
+    return {
+        "status": "success",
+        "analysis": res.choices[0].message.content
+    }
+
+
 
 
 
