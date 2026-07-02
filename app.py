@@ -60,6 +60,10 @@ class MockSubmit(BaseModel):
     answers: list
 
 
+class PDFRequest(BaseModel):
+    text: str    
+
+
 # ================= HOME =================
 @app.get("/")
 def home():
@@ -676,6 +680,44 @@ Return only the analysis.
     return {
         "status": "success",
         "analysis": res.choices[0].message.content
+    }
+
+@app.post("/pdf-summary")
+def pdf_summary(data: PDFRequest):
+
+    prompt = f"""
+You are ExamPanic AI PDF Teacher.
+
+Analyze the following PDF content and generate:
+
+# 📄 Summary
+
+# 📝 Key Points
+
+# 📚 Important Definitions
+
+# 🎯 Exam Tips
+
+# ❓ 5 Practice Questions
+
+PDF Content:
+{data.text}
+"""
+
+    res = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {
+                "role": "system",
+                "content": prompt
+            }
+        ],
+        max_tokens=3000
+    )
+
+    return {
+        "status": "success",
+        "reply": res.choices[0].message.content
     }
 
 
