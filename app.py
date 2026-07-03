@@ -61,7 +61,12 @@ class MockSubmit(BaseModel):
 
 
 class PDFRequest(BaseModel):
-    text: str    
+    text: str 
+
+
+class PDFChatRequest(BaseModel):
+    text: str
+    question: str
 
 
 # ================= HOME =================
@@ -719,6 +724,44 @@ PDF Content:
         "status": "success",
         "reply": res.choices[0].message.content
     }
+    @app.post("/pdf-chat")
+def pdf_chat(data: PDFChatRequest):
+
+    prompt = f"""
+You are ExamPanic PDF AI.
+
+Answer ONLY using the uploaded PDF.
+
+PDF:
+{data.text}
+
+Question:
+{data.question}
+
+Rules:
+- Don't use outside knowledge.
+- If the answer isn't in the PDF, say:
+  "This information is not available in the uploaded PDF."
+"""
+
+    res = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {
+                "role": "system",
+                "content": prompt
+            }
+        ],
+        max_tokens=2000
+    )
+
+    return {
+        "reply": res.choices[0].message.content
+    }
+
+
+
+
 
 
 
