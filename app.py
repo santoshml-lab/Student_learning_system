@@ -724,7 +724,7 @@ PDF Content:
         "status": "success",
         "reply": res.choices[0].message.content
     }
-    @app.post("/pdf-chat")
+@app.post("/pdf-chat")
 def pdf_chat(data: PDFChatRequest):
 
     prompt = f"""
