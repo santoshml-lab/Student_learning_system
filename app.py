@@ -768,28 +768,93 @@ def pdf_mcq(data: PDFMCQRequest):
     prompt = f"""
 You are ExamPanic AI.
 
-Generate exactly 10 ICSE multiple choice questions from the uploaded PDF.
+Generate EXACTLY 10 ICSE MCQs from the uploaded PDF.
 
-Return STRICT JSON only.
+IMPORTANT RULES:
+
+- Return ONLY valid JSON.
+- Do NOT write markdown.
+- Do NOT write ```json
+- Do NOT write explanations outside JSON.
+- Every question MUST have exactly 4 separate options.
+- options MUST be an array of 4 strings.
+- answer must be one of:
+"A","B","C","D"
+
+Return in this exact format:
 
 [
   {{
     "question":"...",
-    "options":["A","B","C","D"],
+    "options":[
+      "Option A",
+      "Option B",
+      "Option C",
+      "Option D"
+    ],
     "answer":"A",
     "explanation":"..."
   }}
 ]
 
 PDF:
+
 {data.text}
 """
+    
+content = (
+    res.choices[0]
+    .message.content
+    .replace("```json", "")
+    .replace("```", "")
+    .strip()
+)
 
-    res = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role":"system","content":prompt}],
-        max_tokens=2500
-    )
+try:
+
+    questions = json.loads(content)
+
+    # Auto Repair
+    for q in questions:
+
+        if isinstance(q.get("options"), list):
+
+            if len(q["options"]) == 1:
+
+                q["options"] = [
+                    x.strip()
+                    for x in q["options"][0].split(",")
+                ]
+
+        while len(q["options"]) < 4:
+            q["options"].append("Option Missing")
+
+    return {
+        "status": "success",
+        "questions": questions
+    }
+
+except Exception as e:
+
+    return {
+        "status": "error",
+        "message": str(e),
+        "raw": content
+    }
+
+
+
+
+
+  
+    
+    
+  
+
+
+
+
+
 
     content = res.choices[0].message.content.replace("```json","").replace("```","").strip()
 
