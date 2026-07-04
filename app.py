@@ -788,7 +788,9 @@ Return ONLY valid JSON.
 ]
 
 PDF:
-{data.text}
+
+{data.text[:12000]}
+
 """
 
     res = client.chat.completions.create(
