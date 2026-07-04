@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+8from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
@@ -762,6 +762,7 @@ Rules:
     return {
         "reply": res.choices[0].message.content
     }
+
 @app.post("/pdf-mcq")
 def pdf_mcq(data: PDFMCQRequest):
 
@@ -770,18 +771,7 @@ You are ExamPanic AI.
 
 Generate EXACTLY 10 ICSE MCQs from the uploaded PDF.
 
-IMPORTANT RULES:
-
-- Return ONLY valid JSON.
-- Do NOT write markdown.
-- Do NOT write ```json
-- Do NOT write explanations outside JSON.
-- Every question MUST have exactly 4 separate options.
-- options MUST be an array of 4 strings.
-- answer must be one of:
-"A","B","C","D"
-
-Return in this exact format:
+Return ONLY valid JSON.
 
 [
   {{
@@ -798,49 +788,55 @@ Return in this exact format:
 ]
 
 PDF:
-
 {data.text}
 """
-    
-content = (
-    res.choices[0]
-    .message.content
-    .replace("```json", "")
-    .replace("```", "")
-    .strip()
-)
 
-try:
+    res = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {
+                "role": "system",
+                "content": prompt
+            }
+        ],
+        max_tokens=2500
+    )
 
-    questions = json.loads(content)
+    content = (
+        res.choices[0].message.content
+        .replace("```json", "")
+        .replace("```", "")
+        .strip()
+    )
 
-    # Auto Repair
-    for q in questions:
+    try:
 
-        if isinstance(q.get("options"), list):
+        questions = json.loads(content)
+
+        for q in questions:
 
             if len(q["options"]) == 1:
-
                 q["options"] = [
                     x.strip()
                     for x in q["options"][0].split(",")
                 ]
 
-        while len(q["options"]) < 4:
-            q["options"].append("Option Missing")
+            while len(q["options"]) < 4:
+                q["options"].append("Option Missing")
 
-    return {
-        "status": "success",
-        "questions": questions
-    }
+        return {
+            "status": "success",
+            "questions": questions
+        }
 
-except Exception as e:
+    except Exception as e:
 
-    return {
-        "status": "error",
-        "message": str(e),
-        "raw": content
-    }
+        return {
+            "status": "error",
+            "message": str(e),
+            "raw": content
+        }
+      
 
 
 
