@@ -856,18 +856,7 @@ except Exception as e:
 
 
 
-    content = res.choices[0].message.content.replace("```json","").replace("```","").strip()
-
-    try:
-        return {
-            "status":"success",
-            "questions": json.loads(content)
-        }
-    except:
-        return {
-            "status":"error",
-            "raw": content
-        }
+    
 
 
 
