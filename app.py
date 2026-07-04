@@ -812,7 +812,7 @@ PDF:
     start = content.find("[")
 
     if start != -1:
-    content = content[start:]
+      content = content[start:]
 
     try:
 
