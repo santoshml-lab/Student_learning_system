@@ -809,6 +809,11 @@ PDF:
         .strip()
     )
 
+    start = content.find("[")
+
+if start != -1:
+    content = content[start:]
+
     try:
 
         questions = json.loads(content)
