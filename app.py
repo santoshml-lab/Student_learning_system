@@ -767,11 +767,13 @@ Rules:
 def pdf_mcq(data: PDFMCQRequest):
 
     prompt = f"""
-You are ExamPanic AI.
+Generate EXACTLY 10 MCQs from the PDF.
 
-Generate EXACTLY 10 ICSE MCQs from the uploaded PDF.
+IMPORTANT:
 
-Return ONLY valid JSON.
+Return ONLY a valid JSON array.
+
+Format:
 
 [
   {{
@@ -789,47 +791,76 @@ Return ONLY valid JSON.
 
 PDF:
 
-{data.text[:12000]}
-
+{data.text}
 """
-
-    res = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[
-            {
-                "role": "system",
-                "content": prompt
-            }
-        ],
-        max_tokens=2500
-    )
-
-    content = (
-        res.choices[0].message.content
-        .replace("```json", "")
-        .replace("```", "")
-        .strip()
-    )
-
-    start = content.find("[")
-
-    if start != -1:
-      content = content[start:]
 
     try:
 
+        res = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            temperature=0,
+            max_tokens=2500,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Return ONLY valid JSON. Never write markdown. Never write explanations outside JSON."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+
+        content = (
+            res.choices[0]
+            .message.content
+            .replace("```json", "")
+            .replace("```", "")
+            .strip()
+        )
+
+        print(content)
+
+        # JSON array extract
+        start = content.find("[")
+        end = content.rfind("]")
+
+        if start != -1 and end != -1:
+            content = content[start:end + 1]
+
         questions = json.loads(content)
 
+        # Auto repair
         for q in questions:
 
-            if len(q["options"]) == 1:
+            if "options" not in q:
                 q["options"] = [
-                    x.strip()
-                    for x in q["options"][0].split(",")
+                    "Option A",
+                    "Option B",
+                    "Option C",
+                    "Option D"
                 ]
+
+            if isinstance(q["options"], list):
+
+                if len(q["options"]) == 1:
+
+                    q["options"] = [
+                        x.strip()
+                        for x in q["options"][0].split(",")
+                    ]
 
             while len(q["options"]) < 4:
                 q["options"].append("Option Missing")
+
+            q["options"] = q["options"][:4]
+
+            if q.get("answer") not in ["A", "B", "C", "D"]:
+                q["answer"] = "A"
+
+            if "explanation" not in q:
+                q["explanation"] = ""
 
         return {
             "status": "success",
@@ -841,8 +872,12 @@ PDF:
         return {
             "status": "error",
             "message": str(e),
-            "raw": content
+            "raw": content if 'content' in locals() else ""
         }
+
+
+
+      
       
 
 
