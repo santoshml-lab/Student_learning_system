@@ -767,11 +767,15 @@ Rules:
 def pdf_mcq(data: PDFMCQRequest):
 
     prompt = f"""
-Generate EXACTLY 10 MCQs from the PDF.
+Generate EXACTLY 10 ICSE MCQs from the following PDF.
 
-IMPORTANT:
+IMPORTANT RULES:
 
-Return ONLY a valid JSON array.
+- Return ONLY a valid JSON array.
+- Do NOT write markdown.
+- Do NOT write explanations before or after JSON.
+- Each question must have exactly 4 options.
+- Answer must be only A, B, C or D.
 
 Format:
 
@@ -791,19 +795,20 @@ Format:
 
 PDF:
 
-{data.text}
+{data.text[:12000]}
 """
 
     try:
 
         res = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             temperature=0,
-            max_tokens=2500,
+            max_completion_tokens=3000,
+            top_p=1,
             messages=[
                 {
                     "role": "system",
-                    "content": "Return ONLY valid JSON. Never write markdown. Never write explanations outside JSON."
+                    "content": "You are an ICSE MCQ generator. Return ONLY valid JSON."
                 },
                 {
                     "role": "user",
@@ -812,44 +817,33 @@ PDF:
             ]
         )
 
-        content = (
-            res.choices[0]
-            .message.content
-            .replace("```json", "")
-            .replace("```", "")
-            .strip()
-        )
+        content = res.choices[0].message.content.strip()
 
         print(content)
 
-        # JSON array extract
+        # Extract JSON array
         start = content.find("[")
         end = content.rfind("]")
 
-        if start != -1 and end != -1:
-            content = content[start:end + 1]
+        if start == -1 or end == -1:
+            raise Exception("JSON array not found.")
+
+        content = content[start:end+1]
 
         questions = json.loads(content)
 
-        # Auto repair
         for q in questions:
 
-            if "options" not in q:
+            if "question" not in q:
+                q["question"] = ""
+
+            if "options" not in q or not isinstance(q["options"], list):
                 q["options"] = [
                     "Option A",
                     "Option B",
                     "Option C",
                     "Option D"
                 ]
-
-            if isinstance(q["options"], list):
-
-                if len(q["options"]) == 1:
-
-                    q["options"] = [
-                        x.strip()
-                        for x in q["options"][0].split(",")
-                    ]
 
             while len(q["options"]) < 4:
                 q["options"].append("Option Missing")
@@ -872,8 +866,15 @@ PDF:
         return {
             "status": "error",
             "message": str(e),
-            "raw": content if 'content' in locals() else ""
-        }
+            "raw": content if "content" in locals() else ""
+            }
+
+
+    
+        
+                    
+
+           
 
 
 
