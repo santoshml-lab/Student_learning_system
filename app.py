@@ -69,6 +69,10 @@ class PDFChatRequest(BaseModel):
     question: str
 
 
+class PDFMCQRequest(BaseModel):
+    text: str
+
+
 # ================= HOME =================
 @app.get("/")
 def home():
@@ -758,6 +762,47 @@ Rules:
     return {
         "reply": res.choices[0].message.content
     }
+    @app.post("/pdf-mcq")
+def pdf_mcq(data: PDFMCQRequest):
+
+    prompt = f"""
+You are ExamPanic AI.
+
+Generate exactly 10 ICSE multiple choice questions from the uploaded PDF.
+
+Return STRICT JSON only.
+
+[
+  {{
+    "question":"...",
+    "options":["A","B","C","D"],
+    "answer":"A",
+    "explanation":"..."
+  }}
+]
+
+PDF:
+{data.text}
+"""
+
+    res = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role":"system","content":prompt}],
+        max_tokens=2500
+    )
+
+    content = res.choices[0].message.content.replace("```json","").replace("```","").strip()
+
+    try:
+        return {
+            "status":"success",
+            "questions": json.loads(content)
+        }
+    except:
+        return {
+            "status":"error",
+            "raw": content
+        }
 
 
 
