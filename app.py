@@ -762,7 +762,7 @@ Rules:
     return {
         "reply": res.choices[0].message.content
     }
-    @app.post("/pdf-mcq")
+@app.post("/pdf-mcq")
 def pdf_mcq(data: PDFMCQRequest):
 
     prompt = f"""
