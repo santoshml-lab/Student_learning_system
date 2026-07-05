@@ -944,7 +944,78 @@ PDF:
         return {
             "status": "error",
             "message": str(e)
-        }   
+        }
+        
+@app.post("/pdf-flashcards")
+def pdf_flashcards(data: PDFRequest):
+
+    prompt = f"""
+You are ExamPanic AI.
+
+Create EXACTLY 20 flashcards from the uploaded PDF.
+
+Rules:
+- Use ONLY the PDF.
+- No outside knowledge.
+- Keep answers short.
+- Perfect for quick revision.
+
+Return ONLY Markdown.
+
+Format:
+
+# 🧠 Flashcards
+
+### Card 1
+Q: ...
+A: ...
+
+### Card 2
+Q: ...
+A: ...
+
+Continue until Card 20.
+
+PDF:
+
+{data.text}
+"""
+
+    try:
+
+        res = client.chat.completions.create(
+
+            model="openai/gpt-oss-20b",
+
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Generate revision flashcards only."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+
+            temperature=0.3,
+            max_completion_tokens=2500
+
+        )
+
+        return {
+            "status": "success",
+            "flashcards": res.choices[0].message.content
+        }
+
+    except Exception as e:
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }    
+
+
 
 
     
