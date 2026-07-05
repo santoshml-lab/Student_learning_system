@@ -868,6 +868,83 @@ PDF:
             "message": str(e),
             "raw": content if "content" in locals() else ""
             }
+@app.post("/pdf-notes")
+def pdf_notes(data: PDFRequest):
+
+    prompt = f"""
+You are ExamPanic AI.
+
+Create HIGH QUALITY STUDY NOTES from the uploaded PDF.
+
+RULES:
+
+- Use ONLY the uploaded PDF.
+- Do not use outside knowledge.
+- Write in textbook style.
+- Make notes easy to revise.
+- Use headings.
+- Use bullet points.
+- Highlight important concepts.
+- Explain difficult topics simply.
+
+FORMAT:
+
+# 📘 Chapter Title
+
+# 📌 Introduction
+
+# 📖 Detailed Notes
+
+# ⭐ Important Points
+
+# 📚 Key Terms
+
+# 🔥 Memory Tricks
+
+# ❓ Important Exam Questions
+
+# 📝 Quick Revision
+
+# 🚀 Final Summary
+
+PDF:
+
+{data.text}
+"""
+
+    try:
+
+        res = client.chat.completions.create(
+
+            model="openai/gpt-oss-20b",
+
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Generate only high quality study notes."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+
+            temperature=0.4,
+            max_completion_tokens=3500
+
+        )
+
+        return {
+            "status": "success",
+            "notes": res.choices[0].message.content
+        }
+
+    except Exception as e:
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }   
 
 
     
