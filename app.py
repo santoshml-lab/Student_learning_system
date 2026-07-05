@@ -217,7 +217,7 @@ User Query:
 """
 
     res = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="openai/gpt-oss-20b",
         messages=[{"role": "system", "content": prompt}],
         max_tokens=5000
     )
@@ -250,7 +250,7 @@ Chapter: {data.chapter}
 """
 
     res = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="openai/gpt-oss-20b",
         messages=[{"role": "system", "content": prompt}],
         max_tokens=1500
     )
@@ -676,7 +676,7 @@ Return only the analysis.
 """
 
     res = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="openai/gpt-oss-20b",
         messages=[
             {
                 "role": "system",
@@ -714,7 +714,7 @@ PDF Content:
 """
 
     res = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model="openai/gpt-oss-20b",
         messages=[
             {
                 "role": "system",
