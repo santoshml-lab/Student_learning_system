@@ -73,6 +73,10 @@ class PDFMCQRequest(BaseModel):
     text: str
 
 
+class PDFMindMapRequest(BaseModel):
+    text: str
+
+
 # ================= HOME =================
 @app.get("/")
 def home():
