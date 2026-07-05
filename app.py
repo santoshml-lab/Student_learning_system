@@ -1076,6 +1076,73 @@ PDF:
             "status": "error",
             "message": str(e)
         }
+        
+@app.post("/pdf-problems")
+def pdf_problems(data: PDFProblemRequest):
+
+    prompt = f"""
+You are an expert Physics, Chemistry and Mathematics teacher.
+
+Read the PDF carefully.
+
+Find every numerical or problem-solving question.
+
+For each problem return:
+
+## Question
+
+### Given
+
+### Formula
+
+### Solution (step by step)
+
+### Final Answer
+
+### Unit
+
+If there are no numericals, generate 5 practice numerical questions from the topic and solve them.
+
+Return Markdown only.
+
+PDF:
+
+{data.text}
+"""
+
+    try:
+
+        res = client.chat.completions.create(
+
+            model="openai/gpt-oss-20b",
+
+            temperature=0.2,
+
+            max_completion_tokens=3500,
+
+            messages=[
+                {
+                    "role":"system",
+                    "content":"Return only Markdown."
+                },
+                {
+                    "role":"user",
+                    "content":prompt
+                }
+            ]
+        )
+
+        return {
+            "status":"success",
+            "problems":res.choices[0].message.content
+        }
+
+    except Exception as e:
+
+        return {
+            "status":"error",
+            "message":str(e)
+        }
 
 
 
