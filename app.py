@@ -77,6 +77,10 @@ class PDFMindMapRequest(BaseModel):
     text: str
 
 
+class PDFProblemRequest(BaseModel):
+    text: str
+
+
 # ================= HOME =================
 @app.get("/")
 def home():
