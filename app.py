@@ -1017,7 +1017,64 @@ PDF:
         return {
             "status": "error",
             "message": str(e)
-        }    
+        }
+        
+@app.post("/pdf-mindmap")
+def pdf_mindmap(data: PDFMindMapRequest):
+
+    prompt = f"""
+Generate a beautiful study mind map from this PDF.
+
+Rules:
+- Return Markdown only.
+- Start with Chapter Title.
+- Use headings and bullet points.
+- Include:
+  - Definition
+  - Key Concepts
+  - Important Terms
+  - Formula (if any)
+  - Examples
+  - Summary
+  - Revision Tips
+
+PDF:
+
+{data.text}
+"""
+
+    try:
+
+        res = client.chat.completions.create(
+            model="openai/gpt-oss-20b",
+            temperature=0.3,
+            max_completion_tokens=3000,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Return only Markdown."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+
+        return {
+            "status": "success",
+            "mindmap": res.choices[0].message.content
+        }
+
+    except Exception as e:
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+
 
 
 
