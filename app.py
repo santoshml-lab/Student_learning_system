@@ -1270,6 +1270,67 @@ PDF:
             "status": "error",
             "message": str(e)
         }
+        
+@app.post("/pdf-important-questions")
+def pdf_important_questions(data: PDFDefinitionRequest):
+
+    prompt = f"""
+You are an expert teacher.
+
+Read the PDF carefully.
+
+Generate:
+
+# Very Important Questions
+
+## 5 One Mark Questions
+
+## 5 Two Mark Questions
+
+## 5 Short Answer Questions
+
+## 5 Long Answer Questions
+
+## 5 HOTS Questions
+
+## 5 Assertion Reason Questions (if applicable)
+
+Return Markdown only.
+
+PDF:
+
+{data.text}
+"""
+
+    try:
+
+        res = client.chat.completions.create(
+            model="openai/gpt-oss-20b",
+            temperature=0.3,
+            max_completion_tokens=3500,
+            messages=[
+                {
+                    "role":"system",
+                    "content":"Return Markdown only."
+                },
+                {
+                    "role":"user",
+                    "content":prompt
+                }
+            ]
+        )
+
+        return {
+            "status":"success",
+            "questions":res.choices[0].message.content
+        }
+
+    except Exception as e:
+
+        return {
+            "status":"error",
+            "message":str(e)
+        }
 
 
 
