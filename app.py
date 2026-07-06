@@ -1147,6 +1147,68 @@ PDF:
             "status":"error",
             "message":str(e)
         }
+        
+@app.post("/pdf-formulas")
+def pdf_formulas(data: PDFFormulaRequest):
+
+    prompt = f"""
+Read the PDF carefully.
+
+Extract ALL formulas from the PDF.
+
+For every formula provide:
+
+# Formula Name
+
+Formula
+
+Meaning
+
+Variables
+
+Units (if applicable)
+
+One line explanation
+
+If there are no formulas, write:
+"No formulas found."
+
+Return Markdown only.
+
+PDF:
+
+{data.text}
+"""
+
+    try:
+
+        res = client.chat.completions.create(
+            model="openai/gpt-oss-20b",
+            temperature=0.2,
+            max_completion_tokens=3000,
+            messages=[
+                {
+                    "role":"system",
+                    "content":"Return only Markdown."
+                },
+                {
+                    "role":"user",
+                    "content":prompt
+                }
+            ]
+        )
+
+        return {
+            "status":"success",
+            "formulas":res.choices[0].message.content
+        }
+
+    except Exception as e:
+
+        return {
+            "status":"error",
+            "message":str(e)
+        }
 
 
 
