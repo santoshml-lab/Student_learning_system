@@ -1213,6 +1213,63 @@ PDF:
             "status":"error",
             "message":str(e)
         }
+        
+@app.post("/pdf-definitions")
+def pdf_definitions(data: PDFDefinitionRequest):
+
+    prompt = f"""
+Read the PDF carefully.
+
+Extract ALL important definitions.
+
+For every definition provide:
+
+# Term
+
+Definition
+
+One line explanation
+
+Example (if applicable)
+
+If there are no definitions, generate important definitions from the topic.
+
+Return Markdown only.
+
+PDF:
+
+{data.text}
+"""
+
+    try:
+
+        res = client.chat.completions.create(
+            model="openai/gpt-oss-20b",
+            temperature=0.2,
+            max_completion_tokens=3000,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Return only Markdown."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+
+        return {
+            "status": "success",
+            "definitions": res.choices[0].message.content
+        }
+
+    except Exception as e:
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 
 
