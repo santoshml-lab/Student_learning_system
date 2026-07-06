@@ -81,6 +81,10 @@ class PDFProblemRequest(BaseModel):
     text: str
 
 
+class PDFFormulaRequest(BaseModel):
+    text: str
+
+
 # ================= HOME =================
 @app.get("/")
 def home():
