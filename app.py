@@ -83,6 +83,10 @@ class PDFProblemRequest(BaseModel):
 
 class PDFFormulaRequest(BaseModel):
     text: str
+    
+
+class PDFDefinitionRequest(BaseModel):
+    text: str
 
 
 # ================= HOME =================
