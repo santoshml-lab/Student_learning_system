@@ -1346,6 +1346,79 @@ PDF:
             "status":"error",
             "message":str(e)
         }
+        
+@app.post("/pdf-study-plan")
+def pdf_study_plan(data: PDFStudyPlanRequest):
+
+    prompt = f"""
+You are ExamPanic AI Study Planner.
+
+Read the uploaded PDF carefully.
+
+Create a smart study plan.
+
+Rules:
+
+- Use ONLY the uploaded PDF.
+- Divide the chapter into logical study sessions.
+- Assume a 7-day plan.
+- Include revision and practice.
+- Keep the plan practical for students.
+
+Format:
+
+# 📅 7-Day Study Plan
+
+## Day 1
+Topics
+Tasks
+
+## Day 2
+Topics
+Tasks
+
+...
+
+## Day 7
+Final Revision
+MCQs
+Quiz
+Weak Topics Review
+
+PDF:
+
+{data.text}
+"""
+
+    try:
+
+        res = client.chat.completions.create(
+            model="openai/gpt-oss-20b",
+            temperature=0.3,
+            max_completion_tokens=3000,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Return only Markdown."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+
+        return {
+            "status": "success",
+            "study_plan": res.choices[0].message.content
+        }
+
+    except Exception as e:
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 
 
