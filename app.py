@@ -6,6 +6,41 @@ import os
 import json
 import numpy as np
 import joblib
+import re
+
+def sanitize_mermaid(code: str):
+
+    code = code.replace("```mermaid", "")
+    code = code.replace("```", "")
+    code = code.strip()
+
+    lines = code.splitlines()
+
+    cleaned = []
+
+    for line in lines:
+
+        line = line.strip()
+
+        if not line:
+            continue
+
+        if line.startswith("flowchart"):
+            cleaned.append("flowchart TD")
+            continue
+
+        line = re.sub(r"\((.*?)\)", r"\1", line)
+        line = line.replace(":", "")
+        line = line.replace(";", "")
+        line = line.replace('"', "")
+        line = line.replace("'", "")
+        line = line.replace("<br>", " ")
+        line = line.replace("/", " ")
+        line = line.replace("\\", " ")
+
+        cleaned.append(line)
+
+    return "\n".join(cleaned)
 
 # ================= APP =================
 app = FastAPI()
