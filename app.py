@@ -1573,6 +1573,63 @@ PDF:
 @app.post("/pdf-diagram")
 def pdf_diagram(data: PDFDiagramRequest):
 
+    prompt = f"""
+You are ExamPanic AI.
+
+Read the uploaded PDF carefully.
+
+Generate ONLY Mermaid Flowchart.
+
+Rules:
+- Return only Mermaid code.
+- No markdown.
+- No explanation.
+- Start directly with 'flowchart TD'.
+
+Example:
+
+flowchart TD
+    A[Sunlight] --> B[Chlorophyll]
+    B --> C[Photosynthesis]
+    C --> D[Glucose]
+    C --> E[Oxygen]
+
+PDF:
+
+{data.text}
+"""
+
+    try:
+
+        res = client.chat.completions.create(
+            model="openai/gpt-oss-20b",
+            temperature=0.2,
+            max_completion_tokens=2500,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Return only Mermaid flowchart code."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+
+        return {
+            "status": "success",
+            "diagram": res.choices[0].message.content
+        }
+
+    except Exception as e:
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
 
 
 
