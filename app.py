@@ -96,6 +96,9 @@ class PDFStudyPlanRequest(BaseModel):
 class PDFDifficultyRequest(BaseModel):
     text: str
 
+class PDFRevisionRequest(BaseModel):
+    text: str
+
 
 # ================= HOME =================
 @app.get("/")
