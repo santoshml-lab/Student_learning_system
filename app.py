@@ -100,6 +100,10 @@ class PDFRevisionRequest(BaseModel):
     text: str
 
 
+class PDFDiagramRequest(BaseModel):
+    text: str
+
+
 # ================= HOME =================
 @app.get("/")
 def home():
