@@ -1663,7 +1663,8 @@ PDF:
             "status": "error",
             "message": str(e)
         }
-        @app.post("/pdf-diagram")
+        
+@app.post("/pdf-diagram")
 def pdf_diagram(data: PDFDiagramRequest):
 
     prompt = f"""
