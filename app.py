@@ -1663,6 +1663,63 @@ PDF:
             "status": "error",
             "message": str(e)
         }
+        @app.post("/pdf-diagram")
+def pdf_diagram(data: PDFDiagramRequest):
+
+    prompt = f"""
+Generate ONLY Mermaid Flowchart.
+
+STRICT RULES
+
+- Output ONLY Mermaid.
+- First line:
+flowchart TD
+
+- Node ids:
+A,B,C,D,E,F,G...
+
+- Keep node labels simple.
+- No markdown.
+- No explanation.
+
+PDF:
+
+{data.text[:10000]}
+"""
+
+    try:
+
+        res = client.chat.completions.create(
+            model="openai/gpt-oss-20b",
+            temperature=0,
+            max_completion_tokens=2500,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Return only valid Mermaid Flowchart."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+
+        diagram = sanitize_mermaid(
+            res.choices[0].message.content
+        )
+
+        return {
+            "status": "success",
+            "diagram": diagram
+        }
+
+    except Exception as e:
+
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 
 
