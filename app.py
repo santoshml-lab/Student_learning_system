@@ -1035,25 +1035,37 @@ PDF:
 def pdf_mindmap(data: PDFMindMapRequest):
 
     prompt = f"""
-Generate a beautiful study mind map from this PDF.
+You are an expert teacher.
+
+Read the PDF carefully.
+
+Generate ONLY Mermaid Mind Map.
 
 Rules:
-- Return Markdown only.
-- Start with Chapter Title.
-- Use headings and bullet points.
-- Include:
-  - Definition
-  - Key Concepts
-  - Important Terms
-  - Formula (if any)
-  - Examples
-  - Summary
-  - Revision Tips
+
+Return only Mermaid code.
+
+No markdown.
+
+No explanation.
+
+Example:
+
+mindmap
+  root((Electricity))
+    Current
+      AC
+      DC
+    Voltage
+    Resistance
+    Ohm's Law
 
 PDF:
 
-{data.text}
-"""
+{text}
+
+
+  
 
     try:
 
