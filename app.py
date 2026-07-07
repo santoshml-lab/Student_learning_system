@@ -1423,6 +1423,74 @@ PDF:
             "status": "error",
             "message": str(e)
         }
+        
+@app.post("/pdf-difficulty")
+def pdf_difficulty(data: PDFDifficultyRequest):
+
+    prompt = f"""
+You are ExamPanic AI Difficulty Analyzer.
+
+Read the uploaded PDF carefully.
+
+Analyze the chapter.
+
+Return Markdown only.
+
+Format:
+
+# 📊 Chapter Difficulty Analysis
+
+## 🟢 Easy Topics
+- Topic
+- Why easy
+
+## 🟡 Medium Topics
+- Topic
+- Why medium
+
+## 🔴 Hard Topics
+- Topic
+- Why difficult
+
+## ⭐ High Priority Topics
+
+## ⏱ Estimated Study Time
+
+## 🎯 Exam Focus Tips
+
+PDF:
+
+{data.text}
+"""
+
+    try:
+
+        res = client.chat.completions.create(
+            model="openai/gpt-oss-20b",
+            temperature=0.3,
+            max_completion_tokens=2500,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Return only Markdown."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+
+        return {
+            "status": "success",
+            "analysis": res.choices[0].message.content
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 
 
