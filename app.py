@@ -1494,6 +1494,77 @@ PDF:
             "status": "error",
             "message": str(e)
         }
+        
+@app.post("/pdf-revision-plan")
+def pdf_revision_plan(data: PDFRevisionRequest):
+
+    prompt = f"""
+You are ExamPanic AI Revision Planner.
+
+Read the uploaded PDF.
+
+Create a smart 7-day revision schedule.
+
+Return Markdown only.
+
+Format:
+
+# 📅 AI Revision Plan
+
+## Day 1
+Study
+
+## Day 2
+Revision
+
+## Day 3
+Important Definitions
+
+## Day 4
+Formula Revision
+
+## Day 5
+Flashcards + MCQs
+
+## Day 6
+Weak Topics
+
+## Day 7
+Final Revision + Mock Test
+
+PDF:
+
+{data.text}
+"""
+
+    try:
+
+        res = client.chat.completions.create(
+            model="openai/gpt-oss-20b",
+            temperature=0.3,
+            max_completion_tokens=2500,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Return only Markdown."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+
+        return {
+            "status": "success",
+            "revision": res.choices[0].message.content
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 
 
