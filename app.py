@@ -89,6 +89,10 @@ class PDFDefinitionRequest(BaseModel):
     text: str
 
 
+class PDFStudyPlanRequest(BaseModel):
+    text: str
+
+
 # ================= HOME =================
 @app.get("/")
 def home():
