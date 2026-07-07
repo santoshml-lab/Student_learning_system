@@ -1042,12 +1042,9 @@ Read the PDF carefully.
 Generate ONLY Mermaid Mind Map.
 
 Rules:
-
-Return only Mermaid code.
-
-No markdown.
-
-No explanation.
+- Return only Mermaid code.
+- No markdown.
+- No explanation.
 
 Example:
 
@@ -1062,10 +1059,8 @@ mindmap
 
 PDF:
 
-{text}
-
-
-  
+{data.text}
+"""
 
     try:
 
@@ -1076,7 +1071,7 @@ PDF:
             messages=[
                 {
                     "role": "system",
-                    "content": "Return only Markdown."
+                    "content": "Return only Mermaid code."
                 },
                 {
                     "role": "user",
@@ -1091,11 +1086,15 @@ PDF:
         }
 
     except Exception as e:
-
         return {
             "status": "error",
             "message": str(e)
         }
+
+
+    
+            
+                 
         
 @app.post("/pdf-problems")
 def pdf_problems(data: PDFProblemRequest):
